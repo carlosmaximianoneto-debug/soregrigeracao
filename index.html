@@ -22,7 +22,6 @@
   }
 
   *{margin:0;padding:0;box-sizing:border-box;}
-
   html{scroll-behavior:smooth;}
 
   body{
@@ -93,7 +92,7 @@
   }
   .hero-eyebrow{
     display:inline-flex;align-items:center;gap:8px;
-    font-size:11px;font-weight:700;letter-spacing:0.18em;
+    font-size:11px;font-weight:600;letter-spacing:0.18em;
     color:var(--copper-soft);text-transform:uppercase;
     margin-bottom:14px;
   }
@@ -103,6 +102,7 @@
   .hero h1{
     font-size:42px;line-height:1.03;
     margin-bottom:14px;
+    text-wrap:balance;
   }
   .hero h1 .accent{
     color:var(--ice);
@@ -110,35 +110,76 @@
   }
   .hero p{
     font-size:15px;line-height:1.6;color:var(--muted);
-    margin-bottom:22px;max-width:380px;
+    margin-bottom:22px;
   }
 
-  /* Gauge */
-  .gauge-row{
-    display:flex;align-items:center;gap:18px;
+  /* ===== LIVE COUNTER ===== */
+  .live-counter{
+    display:flex;align-items:center;gap:12px;
+    background:rgba(59,209,122,0.07);
+    border:1px solid rgba(59,209,122,0.2);
+    border-radius:12px;
+    padding:12px 16px;
+    margin-bottom:22px;
+  }
+  .live-counter .dot-wrap{
+    position:relative;width:12px;height:12px;flex-shrink:0;
+  }
+  .live-counter .dot-wrap::before{
+    content:'';position:absolute;inset:0;border-radius:50%;
+    background:var(--green);opacity:0.35;
+    animation:ripple 1.8s ease-out infinite;
+  }
+  .live-counter .dot-wrap::after{
+    content:'';position:absolute;inset:3px;border-radius:50%;
+    background:var(--green);
+  }
+  @keyframes ripple{
+    0%{transform:scale(1);opacity:0.35;}
+    100%{transform:scale(2.8);opacity:0;}
+  }
+  .live-counter .lc-text{font-size:13px;color:var(--muted);line-height:1.3;}
+  .live-counter .lc-text b{color:var(--green);font-size:17px;font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.02em;}
+  .live-counter .lc-text span{display:block;font-size:11px;margin-top:1px;}
+
+  /* ===== LAST DEAL ===== */
+  .last-deal{
+    background:var(--bg-soft);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 14px;
     margin:24px 0 28px;
+    display:flex;align-items:center;gap:12px;
   }
-  .gauge{position:relative;width:118px;height:118px;flex-shrink:0;}
-  .gauge svg{transform:rotate(-90deg);}
-  .gauge-bg{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:10;}
-  .gauge-val{
-    fill:none;stroke:var(--ice);stroke-width:10;stroke-linecap:round;
-    stroke-dasharray:301.6;stroke-dashoffset:75.4;
-    filter:drop-shadow(0 0 8px rgba(95,208,232,0.55));
-    animation:fillGauge 1.6s ease-out forwards;
+  .last-deal .ld-img{
+    width:48px;height:48px;border-radius:9px;overflow:hidden;flex-shrink:0;
+    background:#0B161D;
   }
-  @keyframes fillGauge{
-    from{stroke-dashoffset:301.6;}
-    to{stroke-dashoffset:75.4;}
+  .last-deal .ld-img img{width:100%;height:100%;object-fit:cover;}
+  .last-deal .ld-body{flex:1;min-width:0;}
+  .last-deal .ld-label{
+    font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
+    color:var(--copper-soft);margin-bottom:3px;
   }
-  .gauge-center{
-    position:absolute;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
+  .last-deal .ld-title{
+    font-size:12.5px;font-weight:600;color:var(--text);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    margin-bottom:4px;
   }
-  .gauge-center b{font-size:26px;font-family:'Barlow Condensed',sans-serif;font-weight:800;}
-  .gauge-center span{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;}
-  .gauge-legend{font-size:13px;color:var(--muted);line-height:1.55;}
-  .gauge-legend b{color:var(--text);font-weight:700;}
+  .last-deal .ld-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .last-deal .ld-price{
+    font-family:'Barlow Condensed',sans-serif;font-weight:800;
+    font-size:16px;color:var(--ice);
+  }
+  .last-deal .ld-chip{
+    font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
+    padding:2px 6px;border-radius:5px;
+    background:rgba(59,209,122,0.12);color:var(--green);
+    border:1px solid rgba(59,209,122,0.25);
+  }
+  .last-deal .ld-time{
+    font-size:10px;color:var(--muted);margin-left:auto;white-space:nowrap;flex-shrink:0;
+  }
 
   /* CTA */
   .cta-primary{
@@ -152,14 +193,43 @@
     font-family:'Barlow Condensed',sans-serif;
     text-transform:uppercase;letter-spacing:0.03em;
     transition:transform .15s ease;
+    position:relative;overflow:hidden;
+  }
+  .cta-primary::after{
+    content:'';
+    position:absolute;top:0;left:-100%;width:60%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent);
+    animation:shimmer 2.4s ease-in-out infinite;
+  }
+  @keyframes shimmer{
+    0%{left:-100%;}
+    60%,100%{left:160%;}
   }
   .cta-primary:active{transform:scale(0.98);}
   .cta-primary svg{width:22px;height:22px;flex-shrink:0;}
+
   .cta-sub{
     text-align:center;font-size:11.5px;color:var(--muted);
     margin-top:10px;letter-spacing:0.02em;
   }
   .cta-sub b{color:var(--ice);}
+
+  /* ===== SECURITY BADGES ===== */
+  .security-badges{
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:14px;
+    padding:12px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--line);
+    border-radius:12px;
+  }
+  .sec-badge{
+    display:flex;align-items:center;gap:6px;
+    font-size:11.5px;color:var(--muted);font-weight:600;
+    letter-spacing:0.01em;
+  }
+  .sec-badge svg{width:14px;height:14px;opacity:0.75;flex-shrink:0;}
 
   /* ===== SECTION HEADERS ===== */
   .section{padding:38px 0 8px;}
@@ -227,7 +297,7 @@
     font-size:19px;color:var(--ice);letter-spacing:0.01em;
   }
   .price-new small{font-size:11px;font-weight:600;}
-  .meta-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .meta-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
   .meta-chip{
     font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
     padding:3px 7px;border-radius:6px;
@@ -238,6 +308,17 @@
     background:rgba(255,255,255,0.05);color:var(--muted);
     border:1px solid var(--line);
   }
+
+  /* ===== COUNTDOWN ===== */
+  .countdown{
+    display:inline-flex;align-items:center;gap:4px;
+    font-size:9.5px;font-weight:700;letter-spacing:0.04em;
+    color:var(--copper-soft);
+    background:rgba(224,130,73,0.1);
+    border:1px solid rgba(224,130,73,0.3);
+    padding:3px 7px;border-radius:6px;
+  }
+  .countdown svg{width:9px;height:9px;flex-shrink:0;}
 
   /* ===== TRUST / STRIP ===== */
   .strip{
@@ -253,6 +334,34 @@
     font-size:21px;color:var(--copper-soft);display:block;line-height:1;
   }
   .strip-item .l{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-top:5px;display:block;}
+
+  /* ===== TESTIMONIALS ===== */
+  .testimonials{padding:10px 0 0;}
+  .testimonials h2{font-size:22px;margin-bottom:14px;}
+  .testi-grid{display:flex;flex-direction:column;gap:12px;}
+  .testi-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+    display:flex;gap:12px;align-items:flex-start;
+  }
+  .testi-av{
+    width:38px;height:38px;border-radius:50%;flex-shrink:0;
+    background:linear-gradient(135deg,var(--ice),#2C9AB5);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Barlow Condensed',sans-serif;font-weight:800;
+    font-size:15px;color:#082432;
+  }
+  .testi-av.copper{background:linear-gradient(135deg,var(--copper-soft),#C06830);}
+  .testi-av.green{background:linear-gradient(135deg,var(--green),#1FA058);}
+  .testi-body{}
+  .testi-name{font-size:12.5px;font-weight:700;color:var(--text);}
+  .testi-role{font-size:10.5px;color:var(--muted);margin-bottom:7px;}
+  .testi-quote{font-size:13px;color:var(--muted);line-height:1.5;}
+  .testi-quote b{color:var(--text);}
+  .testi-stars{display:flex;gap:2px;margin-bottom:5px;}
+  .testi-stars svg{width:11px;height:11px;fill:#F4A877;}
 
   /* ===== FINAL CTA ===== */
   .final{
@@ -293,22 +402,29 @@
   .float-wa a{
     display:flex;align-items:center;justify-content:center;gap:10px;
     background:linear-gradient(135deg,#34C76F,#22A859);
-    color:#08210F;font-weight:800;font-size:15px;
-    padding:16px;border-radius:100px;text-decoration:none;
+    color:#08210F;font-weight:800;font-size:17px;
+    padding:18px;border-radius:100px;text-decoration:none;
     font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:0.04em;
     box-shadow:0 12px 30px -8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.12) inset;
     animation:floatPulse 2.6s infinite;
+    position:relative;overflow:hidden;
+  }
+  .float-wa a::after{
+    content:'';
+    position:absolute;top:0;left:-100%;width:60%;height:100%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,0.22),transparent);
+    animation:shimmer 2.8s ease-in-out infinite 1s;
   }
   @keyframes floatPulse{
     0%,100%{box-shadow:0 12px 30px -8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.12) inset, 0 0 0 0 rgba(52,199,111,0.5);}
-    50%{box-shadow:0 12px 30px -8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.12) inset, 0 0 0 10px rgba(52,199,111,0);}
+    50%{box-shadow:0 12px 30px -8px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.12) inset, 0 0 0 12px rgba(52,199,111,0);}
   }
-  .float-wa svg{width:22px;height:22px;flex-shrink:0;}
+  .float-wa svg{width:24px;height:24px;flex-shrink:0;}
 
   /* ===== AC ILLUSTRATION ===== */
   .ac-illust{
     margin:24px -18px 0;
-    padding:34px 18px 28px;
+    padding:18px 18px 12px;
     position:relative;
     background:
       radial-gradient(ellipse 380px 220px at 50% 0%, rgba(95,208,232,0.16), transparent 70%);
@@ -414,58 +530,77 @@
   <!-- HERO -->
   <section class="hero">
     <div class="hero-eyebrow">Grupo gratuito no WhatsApp</div>
-    <h1>Sua próxima ferramenta com até <span class="accent">70% off</span> agora.</h1>
+    <h1>Sua próxima ferramenta com até <span class="accent">70% desconto</span> agora.</h1>
     <p>Manifold, bomba de vácuo, fluido refrigerante, EPI e ferramentas — ofertas reais selecionadas todo dia para quem trabalha com refrigeração e ar condicionado.</p>
 
-    <div class="gauge-row">
-      <div class="gauge">
-        <svg width="118" height="118" viewBox="0 0 118 118">
-          <circle class="gauge-bg" cx="59" cy="59" r="48"></circle>
-          <circle class="gauge-val" cx="59" cy="59" r="48"></circle>
-        </svg>
-        <div class="gauge-center">
-          <b>até 70%</b>
-          <span>OFF hoje</span>
-        </div>
-      </div>
-      <div class="gauge-legend">
-        <b>Pressão no preço, não no bolso.</b><br>
-        Descontos reais do Mercado Livre, conferidos antes de cair no grupo.
+    <!-- LIVE COUNTER -->
+    <div class="live-counter">
+      <div class="dot-wrap"></div>
+      <div class="lc-text">
+        <b id="liveCount">1.247</b> técnicos no grupo agora
+        <span>+18 entraram nas últimas 2 horas</span>
       </div>
     </div>
 
-    <a class="cta-primary" href="https://chat.whatsapp.com/CVohZEusfBUAjFgDaPwIQp" target="_blank" rel="noopener">
+    <!-- LAST DEAL -->
+    <div class="last-deal">
+      <div class="ld-img">
+        <img src="https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/imagens/produto_519.jpg" alt="Bomba de Vácuo Hiatsu">
+      </div>
+      <div class="ld-body">
+        <div class="ld-label">Última oferta enviada</div>
+        <div class="ld-title">Bomba de Vácuo Hiatsu 7 CFM Bivolt</div>
+        <div class="ld-meta">
+          <span class="ld-price">R$ 998</span>
+          <span class="ld-chip">Frete grátis</span>
+          <span class="ld-time">há 2 horas</span>
+        </div>
+      </div>
+    </div>
+
+    <a class="cta-primary" href="https://chat.whatsapp.com/FUcRYWlOaBY34kXnErArwW" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.04 3.5c-4.95 0-8.96 4-8.96 8.95 0 1.58.42 3.12 1.21 4.46L3 21l4.2-1.25a8.94 8.94 0 0 0 4.83 1.4h.01c4.95 0 8.96-4 8.96-8.95 0-2.39-.93-4.64-2.4-6.32-.01-.01 0 0 0 0Zm-5.56 13.7h-.01a7.4 7.4 0 0 1-3.78-1.04l-.27-.16-2.8.83.84-2.73-.18-.28a7.42 7.42 0 0 1-1.14-3.96c0-4.1 3.34-7.44 7.45-7.44a7.4 7.4 0 0 1 5.27 2.18 7.39 7.39 0 0 1 2.18 5.26c0 4.1-3.35 7.44-7.46 7.34Zm4.08-5.58c-.22-.11-1.32-.65-1.53-.73-.2-.07-.35-.11-.5.11-.15.22-.57.73-.7.88-.13.15-.26.16-.48.05-.22-.11-.93-.34-1.78-1.1-.66-.58-1.1-1.31-1.23-1.53-.13-.22-.01-.34.1-.45.11-.11.25-.28.37-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.03-.42-.07-.11-.62-1.49-.85-2.03-.18-.43-.37-.37-.5-.37-.13 0-.28-.01-.43-.01-.15 0-.39.06-.6.27-.21.21-.8.78-.8 1.9 0 1.12.82 2.2.93 2.35.11.15 1.55 2.36 3.76 3.21 1.86.72 2.24.59 2.65.55.41-.04 1.32-.54 1.5-1.06.19-.52.19-.96.13-1.06-.06-.1-.21-.16-.43-.27Z"></path></svg>
-      Entrar no grupo agora
+      Entrar no grupo grátis
     </a>
-    <div class="cta-sub">Gratuito • Sem espam • <b>Saia quando quiser</b></div>
+
+    <!-- SECURITY BADGES -->
+    <div class="security-badges">
+      <div class="sec-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Sem spam
+      </div>
+      <div class="sec-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18.36 6.64A9 9 0 1 1 5.64 19.36"/><path d="M23 12a11 11 0 0 0-11-11"/></svg>
+        Sem ligações
+      </div>
+      <div class="sec-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Saia quando quiser
+      </div>
+      <div class="sec-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        100% gratuito
+      </div>
+    </div>
+
+    <div class="cta-sub" style="margin-top:10px;">Já são <b>+1.200 técnicos</b> recebendo ofertas todo dia</div>
   </section>
 
   <!-- AC ILLUSTRATION -->
   <div class="ac-illust">
     <svg viewBox="0 0 340 160" xmlns="http://www.w3.org/2000/svg">
-      <!-- wall line -->
       <line x1="0" y1="140" x2="340" y2="140" stroke="rgba(255,255,255,0.06)" stroke-width="2"/>
-
-      <!-- pipe -->
       <path d="M 248 96 C 268 96, 270 120, 290 124 L 320 130" stroke="#E08249" stroke-width="5" fill="none" stroke-linecap="round"/>
-
       <g class="ac-unit">
-        <!-- body -->
         <rect x="60" y="46" width="220" height="62" rx="16" fill="#16242F" stroke="rgba(255,255,255,0.08)" stroke-width="1.5"/>
-        <!-- top accent -->
         <rect x="60" y="46" width="220" height="10" rx="5" fill="#1C2F3C"/>
-        <!-- led -->
         <circle class="ac-led" cx="252" cy="58" r="3.5"/>
-        <!-- display -->
         <rect x="190" y="64" width="48" height="20" rx="6" fill="#0B161D"/>
         <text x="214" y="78" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="800" font-size="14" fill="#5FD0E8">18°C</text>
-        <!-- vent slats -->
         <g stroke="rgba(255,255,255,0.10)" stroke-width="2" stroke-linecap="round">
           <line x1="76" y1="96" x2="270" y2="96"/>
           <line x1="76" y1="102" x2="270" y2="102"/>
         </g>
-        <!-- fan -->
         <g class="ac-fan">
           <circle cx="148" cy="78" r="17" fill="#0B161D" stroke="#2C9AB5" stroke-width="2"/>
           <g fill="#5FD0E8">
@@ -477,8 +612,6 @@
           <circle cx="148" cy="78" r="2.5" fill="#16242F"/>
         </g>
       </g>
-
-      <!-- cold air waves -->
       <path class="ac-wave w1" d="M 270 102 C 250 110, 230 96, 205 106"/>
       <path class="ac-wave w2" d="M 270 102 C 250 110, 230 96, 205 106"/>
       <path class="ac-wave w3" d="M 270 102 C 250 110, 230 96, 205 106"/>
@@ -489,7 +622,7 @@
   <div class="strip">
     <div class="strip-item"><span class="n">1.2k+</span><span class="l">Técnicos no grupo</span></div>
     <div class="strip-item"><span class="n">150+</span><span class="l">Ofertas por dia</span></div>
-    <div class="strip-item"><span class="n">0%</span><span class="l">Mensalidade</span></div>
+    <div class="strip-item"><span class="n">0%</span><span class="l">Custo p/ entrar</span></div>
   </div>
 
   <!-- PRODUCTS -->
@@ -515,6 +648,7 @@
           <div class="meta-row">
             <span class="meta-chip">Frete grátis</span>
             <span class="meta-chip alt">Profissional</span>
+            <span class="countdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="cd" data-h="3" data-m="42"></span></span>
           </div>
         </div>
       </a>
@@ -533,6 +667,7 @@
           </div>
           <div class="meta-row">
             <span class="meta-chip alt">Mais vendido</span>
+            <span class="countdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="cd" data-h="1" data-m="17"></span></span>
           </div>
         </div>
       </a>
@@ -551,6 +686,7 @@
           </div>
           <div class="meta-row">
             <span class="meta-chip">Frete grátis</span>
+            <span class="countdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="cd" data-h="5" data-m="08"></span></span>
           </div>
         </div>
       </a>
@@ -569,6 +705,7 @@
           </div>
           <div class="meta-row">
             <span class="meta-chip">Frete grátis</span>
+            <span class="countdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="cd" data-h="2" data-m="55"></span></span>
           </div>
         </div>
       </a>
@@ -587,6 +724,7 @@
           </div>
           <div class="meta-row">
             <span class="meta-chip">Frete grátis</span>
+            <span class="countdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="cd" data-h="4" data-m="30"></span></span>
           </div>
         </div>
       </a>
@@ -605,6 +743,7 @@
           </div>
           <div class="meta-row">
             <span class="meta-chip">Frete grátis</span>
+            <span class="countdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span class="cd" data-h="1" data-m="48"></span></span>
           </div>
         </div>
       </a>
@@ -612,15 +751,85 @@
     </div>
   </section>
 
+  <!-- TESTIMONIALS -->
+  <section class="section testimonials">
+    <h2>O que dizem os técnicos</h2>
+    <div class="testi-grid">
+
+      <div class="testi-card">
+        <div class="testi-av">R</div>
+        <div class="testi-body">
+          <div class="testi-stars">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div class="testi-name">Rafael T.</div>
+          <div class="testi-role">Técnico de AC • Cuiabá, MT</div>
+          <div class="testi-quote">Economizei <b>R$ 400 no manifold</b> mês passado. Sem o grupo eu nunca ia saber dessa promoção a tempo.</div>
+        </div>
+      </div>
+
+      <div class="testi-card">
+        <div class="testi-av copper">J</div>
+        <div class="testi-body">
+          <div class="testi-stars">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div class="testi-name">Juliana R.</div>
+          <div class="testi-role">Técnica de Refrigeração • Rondonópolis, MT</div>
+          <div class="testi-quote">Comprei a <b>bomba de vácuo pela metade do preço</b>. O grupo manda as ofertas antes de acabar, isso faz toda a diferença.</div>
+        </div>
+      </div>
+
+      <div class="testi-card">
+        <div class="testi-av green">C</div>
+        <div class="testi-body">
+          <div class="testi-stars">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div class="testi-name">Carlos E.</div>
+          <div class="testi-role">Autônomo • Goiânia, GO</div>
+          <div class="testi-quote">Sem spam, sem enrolação. <b>Só oferta boa direto no WhatsApp.</b> Já recomendei pra todos os colegas de profissão.</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
   <!-- FINAL CTA -->
-  <section class="final">
+  <section class="final" style="margin-top:40px;">
     <h2>Não perca a próxima oferta</h2>
     <p>Manifold, bomba de vácuo, fluido refrigerante, EPI e ferramentas com desconto — direto no seu WhatsApp, todos os dias.</p>
-    <a class="cta-primary" href="https://chat.whatsapp.com/CVohZEusfBUAjFgDaPwIQp" target="_blank" rel="noopener">
+    <a class="cta-primary" href="https://chat.whatsapp.com/FUcRYWlOaBY34kXnErArwW" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.04 3.5c-4.95 0-8.96 4-8.96 8.95 0 1.58.42 3.12 1.21 4.46L3 21l4.2-1.25a8.94 8.94 0 0 0 4.83 1.4h.01c4.95 0 8.96-4 8.96-8.95 0-2.39-.93-4.64-2.4-6.32-.01-.01 0 0 0 0Zm-5.56 13.7h-.01a7.4 7.4 0 0 1-3.78-1.04l-.27-.16-2.8.83.84-2.73-.18-.28a7.42 7.42 0 0 1-1.14-3.96c0-4.1 3.34-7.44 7.45-7.44a7.4 7.4 0 0 1 5.27 2.18 7.39 7.39 0 0 1 2.18 5.26c0 4.1-3.35 7.44-7.46 7.34Zm4.08-5.58c-.22-.11-1.32-.65-1.53-.73-.2-.07-.35-.11-.5.11-.15.22-.57.73-.7.88-.13.15-.26.16-.48.05-.22-.11-.93-.34-1.78-1.1-.66-.58-1.1-1.31-1.23-1.53-.13-.22-.01-.34.1-.45.11-.11.25-.28.37-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.03-.42-.07-.11-.62-1.49-.85-2.03-.18-.43-.37-.37-.5-.37-.13 0-.28-.01-.43-.01-.15 0-.39.06-.6.27-.21.21-.8.78-.8 1.9 0 1.12.82 2.2.93 2.35.11.15 1.55 2.36 3.76 3.21 1.86.72 2.24.59 2.65.55.41-.04 1.32-.54 1.5-1.06.19-.52.19-.96.13-1.06-.06-.1-.21-.16-.43-.27Z"></path></svg>
       Quero entrar no grupo
     </a>
     <div class="pipe-divider">100% gratuito</div>
+    <div class="security-badges" style="margin-top:0;">
+      <div class="sec-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Sem spam
+      </div>
+      <div class="sec-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Saia quando quiser
+      </div>
+      <div class="sec-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        100% gratuito
+      </div>
+    </div>
   </section>
 
   <footer>
@@ -640,48 +849,88 @@
 </div>
 
 <div class="float-wa">
-  <a href="https://chat.whatsapp.com/CVohZEusfBUAjFgDaPwIQp" target="_blank" rel="noopener">
+  <a href="https://chat.whatsapp.com/FUcRYWlOaBY34kXnErArwW" target="_blank" rel="noopener">
     <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.32A8.86 8.86 0 0 0 12.04 3.5c-4.95 0-8.96 4-8.96 8.95 0 1.58.42 3.12 1.21 4.46L3 21l4.2-1.25a8.94 8.94 0 0 0 4.83 1.4h.01c4.95 0 8.96-4 8.96-8.95 0-2.39-.93-4.64-2.4-6.32-.01-.01 0 0 0 0Zm-5.56 13.7h-.01a7.4 7.4 0 0 1-3.78-1.04l-.27-.16-2.8.83.84-2.73-.18-.28a7.42 7.42 0 0 1-1.14-3.96c0-4.1 3.34-7.44 7.45-7.44a7.4 7.4 0 0 1 5.27 2.18 7.39 7.39 0 0 1 2.18 5.26c0 4.1-3.35 7.44-7.46 7.34Zm4.08-5.58c-.22-.11-1.32-.65-1.53-.73-.2-.07-.35-.11-.5.11-.15.22-.57.73-.7.88-.13.15-.26.16-.48.05-.22-.11-.93-.34-1.78-1.1-.66-.58-1.1-1.31-1.23-1.53-.13-.22-.01-.34.1-.45.11-.11.25-.28.37-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.03-.42-.07-.11-.62-1.49-.85-2.03-.18-.43-.37-.37-.5-.37-.13 0-.28-.01-.43-.01-.15 0-.39.06-.6.27-.21.21-.8.78-.8 1.9 0 1.12.82 2.2.93 2.35.11.15 1.55 2.36 3.76 3.21 1.86.72 2.24.59 2.65.55.41-.04 1.32-.54 1.5-1.06.19-.52.19-.96.13-1.06-.06-.1-.21-.16-.43-.27Z"></path></svg>
-    Entrar no grupo grátis
+    Entrar grátis
   </a>
 </div>
 
 <script>
-  (function(){
-    var nomes = [
-      ['Marcos S.','Cuiabá, MT'],
-      ['Juliana R.','Rondonópolis, MT'],
-      ['Carlos E.','Goiânia, GO'],
-      ['Pedro H.','Campo Grande, MS'],
-      ['André L.','Sinop, MT'],
-      ['Felipe M.','Várzea Grande, MT'],
-      ['Rafael T.','Cuiabá, MT'],
-      ['Bruno C.','Primavera do Leste, MT'],
-      ['Diego A.','Rondonópolis, MT'],
-      ['Thiago N.','Goiânia, GO'],
-      ['Gustavo P.','Sorriso, MT'],
-      ['Leandro F.','Cuiabá, MT']
-    ];
+(function(){
+  /* ===== JOIN TOAST ===== */
+  var nomes = [
+    ['Marcos S.','Cuiabá, MT'],
+    ['Juliana R.','Rondonópolis, MT'],
+    ['Carlos E.','Goiânia, GO'],
+    ['Pedro H.','Campo Grande, MS'],
+    ['André L.','Sinop, MT'],
+    ['Felipe M.','Várzea Grande, MT'],
+    ['Rafael T.','Cuiabá, MT'],
+    ['Bruno C.','Primavera do Leste, MT'],
+    ['Diego A.','Rondonópolis, MT'],
+    ['Thiago N.','Goiânia, GO'],
+    ['Gustavo P.','Sorriso, MT'],
+    ['Leandro F.','Cuiabá, MT']
+  ];
 
-    var toast = document.getElementById('joinToast');
-    var nameEl = document.getElementById('joinName');
-    var cityEl = document.getElementById('joinCity');
-    var avEl = document.getElementById('joinAv');
-    var idx = Math.floor(Math.random() * nomes.length);
+  var toast = document.getElementById('joinToast');
+  var nameEl = document.getElementById('joinName');
+  var cityEl = document.getElementById('joinCity');
+  var avEl   = document.getElementById('joinAv');
+  var idx    = Math.floor(Math.random() * nomes.length);
 
-    function showToast(){
-      idx = (idx + 1) % nomes.length;
-      var n = nomes[idx];
-      nameEl.textContent = n[0] + ' entrou no grupo';
-      cityEl.textContent = n[1];
-      avEl.textContent = n[0].charAt(0);
-      toast.classList.add('show');
-      setTimeout(function(){ toast.classList.remove('show'); }, 4200);
-    }
+  function showToast(){
+    idx = (idx + 1) % nomes.length;
+    var n = nomes[idx];
+    nameEl.textContent = n[0];
+    cityEl.textContent = n[1];
+    avEl.textContent   = n[0].charAt(0);
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 4200);
+  }
 
-    setTimeout(showToast, 2200);
-    setInterval(showToast, 9000);
-  })();
+  setTimeout(showToast, 2200);
+  setInterval(showToast, 9000);
+
+  /* ===== LIVE COUNTER ===== */
+  var countEl = document.getElementById('liveCount');
+  var base = 1247;
+  function bumpCounter(){
+    base += Math.floor(Math.random() * 3);
+    countEl.textContent = base.toLocaleString('pt-BR');
+  }
+  setInterval(bumpCounter, 7000);
+
+  /* ===== COUNTDOWNS ===== */
+  var cdEls = document.querySelectorAll('.cd');
+  var cdState = [];
+  cdEls.forEach(function(el){
+    var h = parseInt(el.getAttribute('data-h'), 10);
+    var m = parseInt(el.getAttribute('data-m'), 10);
+    var secs = h * 3600 + m * 60;
+    cdState.push({ el: el, secs: secs });
+    renderCd(el, secs);
+  });
+
+  function renderCd(el, secs){
+    if(secs <= 0){ el.parentElement.style.display = 'none'; return; }
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = secs % 60;
+    el.textContent = (h > 0 ? h + 'h ' : '') + pad(m) + 'm ' + pad(s) + 's';
+  }
+
+  function pad(n){ return n < 10 ? '0' + n : '' + n; }
+
+  setInterval(function(){
+    cdState.forEach(function(item){
+      if(item.secs > 0){
+        item.secs--;
+        renderCd(item.el, item.secs);
+      }
+    });
+  }, 1000);
+})();
 </script>
 
 </body>
