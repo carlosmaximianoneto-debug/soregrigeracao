@@ -98,8 +98,13 @@ def oidc_request_url(base_url: str) -> str:
 
 
 def request_oidc_token(base_url: str, request_token: str) -> str:
-    if not request_token or len(request_token) > 4096:
-        raise RouteError("Credencial OIDC indisponível")
+    # This is the runner's opaque request credential, not the returned OIDC JWT.
+    # GitHub documents no 4 KiB limit; valid job credentials can exceed it.
+    # Pass it only to the allowlisted issuer, never to logs or to Supabase.
+    if not request_token:
+        raise RouteError("Credencial OIDC ausente; confira id-token: write no job")
+    if not isinstance(request_token, str) or not re.fullmatch(r"[\x21-\x7e]+", request_token):
+        raise RouteError("Credencial OIDC com caracteres inválidos")
     url = oidc_request_url(base_url)
     request = Request(url, headers={"Authorization": f"Bearer {request_token}",
                                     "Accept": "application/json"})

@@ -81,6 +81,37 @@ class RoutePublisherTests(unittest.TestCase):
         with self.assertRaises(route.RouteError):
             route.read_https(route.MANIFEST_URL, "application/json", 4096)
 
+    def test_runner_credential_larger_than_4k_is_forwarded_without_logging(self):
+        import io
+        from contextlib import redirect_stdout, redirect_stderr
+        opaque = "synthetic-runner-credential-" + "x" * 8192
+        class Response:
+            status = 200
+            url = "https://pipelines.actions.githubusercontent.com/token?job=123&audience=acbot-route-manifest"
+            def __enter__(self): return self
+            def __exit__(self, *_): return False
+            def read(self, *_): return b'{"value":"header.payload.signature"}'
+        class Opener:
+            def open(self, request, timeout):
+                self_ref.assertEqual(request.get_header("Authorization"), "Bearer " + opaque)
+                return Response()
+        self_ref = self
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(route, "build_opener", return_value=Opener()), \
+             redirect_stdout(stdout), redirect_stderr(stderr):
+            self.assertEqual(route.request_oidc_token(
+                "https://pipelines.actions.githubusercontent.com/token?job=123", opaque),
+                "header.payload.signature")
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_missing_or_unsafe_runner_credential_never_performs_http(self):
+        with patch.object(route, "build_opener") as opener:
+            for credential in ("", "token\r\nX-Leak: data", "token with space", "token\x00", "tókén"):
+                with self.subTest(case=len(credential)), self.assertRaises(route.RouteError):
+                    route.request_oidc_token("https://pipelines.actions.githubusercontent.com/token?job=123", credential)
+            opener.assert_not_called()
+
     def test_idle_and_valid_plan_do_not_change_current_site(self):
         self.assertIsNone(route.parse_manifest('{"status":"idle"}'))
         self.assertEqual(route.plan_route(None, html(), html()).action, "idle")
