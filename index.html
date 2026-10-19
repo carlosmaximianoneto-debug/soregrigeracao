@@ -567,7 +567,7 @@
     <p class="entry-help" id="direct-entry-help" role="status">Se não abrir, toque no botão acima.</p>
   </div>
   <footer class="entry-footer">
-    <a id="direct-entry-back" href="./">Ver a página de ofertas</a>
+    <a id="direct-entry-back" href="?direto=0">Ver a página de ofertas</a>
   </footer>
 </section>
 
@@ -918,7 +918,7 @@
 <script id="direct-entry-script">
 (function(){
   var params = new URLSearchParams(window.location.search);
-  if(params.getAll('direto').length !== 1 || params.get('direto') !== '1') return;
+  if(params.has('direto') && (params.getAll('direto').length !== 1 || params.get('direto') !== '1')) return;
   // Read the three invitations managed by the existing route publisher.
   // Do not copy an invitation here: future group changes must update this flow too.
   var anchors = Array.from(document.querySelectorAll('a[href^="https://chat.whatsapp.com/"]'));
