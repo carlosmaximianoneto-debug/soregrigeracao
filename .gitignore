@@ -1,0 +1,13 @@
+dist/
+netlify/generated/
+node_modules/
+__pycache__/
+*.pyc
+.env
+.env.*
+.netlify/
+*.log
+catalogue-public.json
+preview-verification.json
+docs/SUPABASE-PREFLIGHT.md
+supabase/catalogue-candidate/

@@ -1,5 +1,15 @@
 # soregrigeracao
 
+## Catálogo e página para refrigeristas
+
+Versão aprovada visualmente em 24/10/2026, preparada na branch `codex/catalogo-mobile-supabase`. Inclui busca, categorias, carrossel de bombas, layout mobile e páginas de produtos/categorias renderizadas no servidor para SEO. O H1 é “Ferramentas para refrigerista — ofertas no WhatsApp”.
+
+Execute `npm run build`. Somente a lista de arquivos públicos de `scripts/build-site.mjs` vai para `dist/`; banco, snapshots, operações e segredos não são publicados. O índice continua na raiz para preservar o publicador dos três convites WhatsApp.
+
+**Esta branch não ativa a sincronização nem representa publicação em produção.** Antes de integrar em `main`, seguir [a implantação](docs/DEPLOYMENT.md). A origem automática do JSON ainda precisa ser implantada e validada. O relatório de auditoria da infraestrutura permanece local e não faz parte do repositório. Configurações do navegador contêm apenas URLs públicas. Produtos mortos saem após a atualização da base; snapshots expirados são recusados em produção.
+
+O catálogo replica preços cadastrados no Supabase; não consulta os preços do Mercado Livre em tempo real. A validação de links e o atualizador de preços existentes continuam independentes, sem alterações ou reinícios nesta entrega.
+
 ## Publicação da entrada dos grupos
 
 O fluxo `.github/workflows/public-route.yml` consulta, a cada cinco minutos ou por
@@ -48,3 +58,4 @@ Após implantar o backend e publicar o workflow, execute-o uma vez com o modo
 desligado: deve terminar em `route_idle`, sem commit novo nem alteração de convite.
 Para parar futuras trocas, desligue o modo no painel e desabilite o workflow;
 uma publicação já iniciada precisa ser conferida/reconciliada antes de reverter.
+

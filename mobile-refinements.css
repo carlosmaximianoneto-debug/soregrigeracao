@@ -1,0 +1,67 @@
+/* Refinamentos para uso com uma mão e leitura em telas pequenas. */
+.hero-band{background:var(--navy)}
+body:has(.hero){background:var(--paper)}
+.category-select{display:block;margin-top:18px;max-width:460px}
+.category-select label{display:block;font-size:13px;font-weight:600;margin-bottom:9px}
+.category-select select{width:100%;height:50px;background:#fff;border:1px solid #bdc9c9;border-radius:8px;color:var(--ink);font:14px Inter,sans-serif;padding:0 13px}
+.load-more{display:block;margin:30px auto 0;padding:14px 24px;min-height:48px;background:var(--navy);color:#fff;font:600 14px Inter,sans-serif;border:0;border-radius:8px}
+.load-more[hidden]{display:none}
+.catalogue-price{margin-top:auto;padding-top:18px;font-size:20px;font-weight:700;line-height:1.4}
+.catalogue-price span{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:3px}
+.image-unavailable{height:100%;display:grid;place-items:center;color:var(--muted);font-size:13px}
+.static-catalogue-link{margin-top:24px;font-size:13px;line-height:1.7}
+.static-catalogue-link a{min-height:44px;display:inline-flex;align-items:center;color:#254e60}
+.catalogue-preview .header,.catalogue-preview .hero-band,.catalogue-preview .scope-strip,.catalogue-preview .how,.catalogue-preview .questions,.catalogue-preview .final,.catalogue-preview .footer{display:none}
+.catalogue-preview .catalogue{padding-top:28px;padding-bottom:100px}
+.product-link{min-height:44px}
+.filters{gap:8px}
+.filters button{min-height:44px;font-size:12px}
+.header nav a{display:flex;align-items:center;min-height:44px}
+.product h3{font-size:14px}
+.spec,.product-type,.product-link{font-size:12px}
+.product-info{padding-bottom:10px}
+.catalogue-note{font-size:12px}
+@media(max-width:700px){
+  .hero-copy>p:not(.join-note){font-size:15px;line-height:1.65}
+  .hero .join-note{font-size:12px}
+  .hero-join{font-size:14px;gap:10px}
+  .catalogue-shortcut{font-size:12px;line-height:1.8}
+  .hero-visual figcaption strong{font-size:15px}
+  .hero-visual figcaption span{font-size:12px}
+  .hero-visual figcaption{gap:12px}
+  .stage-label{font-size:10px}
+  .stage-number span{font-size:12px}
+  .scope-strip>div{font-size:9px}
+  .section-heading>p{font-size:14px;line-height:1.7}
+  .section-heading>p br{display:none}
+  .search label{font-size:13px;margin-bottom:9px}
+  .search input{font-size:16px;padding-left:44px;padding-right:14px}
+  .search input::placeholder{font-size:13px}
+  .filters{display:none}
+  .category-select{display:block;margin-top:16px}
+  .category-select label{display:block;font-size:13px;font-weight:600;margin-bottom:9px}
+  .category-select select{width:100%;height:50px;background:#fff;border:1px solid #bdc9c9;border-radius:8px;color:var(--ink);font:14px Inter,sans-serif;padding:0 13px}
+  .category-select select:focus-visible{outline:3px solid #c86821;outline-offset:4px}
+  .results-meta{font-size:12px;margin-top:23px}
+  .results-meta>span{display:none}
+  .product-photo{height:170px;padding:18px}
+  .product-type{font-size:11px;line-height:1.5}
+  .product h3{font-size:14px;line-height:1.5}
+  .spec{font-size:12px;line-height:1.6}
+  .product-link{font-size:12px;line-height:1.5;min-height:48px;align-items:center}
+  .product-link span{font-size:19px}
+  .product-info{padding:14px 12px 8px}
+  .catalogue-note{font-size:12px;line-height:1.8}
+  .how strong{font-size:15px;line-height:1.5}
+  .how p{font-size:14px;line-height:1.7}
+  .questions summary{font-size:14px;line-height:1.5}
+  .questions details>p{font-size:14px;line-height:1.75}
+  .final p{font-size:14px;line-height:1.7}
+  .final .button{font-size:13px;min-height:58px;padding-inline:14px;gap:9px}
+  .footer{font-size:12px;line-height:1.8}
+  .mobile-join .button{font-size:14px}
+  .empty h3{font-size:18px;line-height:1.5}
+  .empty p{font-size:14px}
+  .empty button{font-size:13px;min-height:48px}
+}
+@media(max-width:360px){.product-photo{height:142px}.product h3{font-size:13px}.product-link{font-size:11px}.final .button{font-size:12px}.hero-join{font-size:13px}}
