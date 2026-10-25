@@ -130,11 +130,65 @@ test('accents, case, separators and connective words do not hide matching produc
   assert.deepEqual(ui.ids(), ['hole-saw', 'hole-saws']);
 });
 
-test('whole words reject misleading fragments and do not introduce fuzzy matches', async () => {
+test('complete words keep precise matches and do not introduce fuzzy matches', async () => {
   const ui = await setup(fixtures);
-  for (const [query, expected] of [['cola', ['glue']], ['gas', ['gas', 'gases']], ['bro', []], ['furadera', []]]) {
+  for (const [query, expected] of [['cola', ['glue']], ['gas', ['gas', 'gases']], ['furadera', []]]) {
     ui.search(query); assert.deepEqual(ui.ids(), expected, query);
   }
+});
+
+test('typing alica immediately shows pliers in the product grid, without a suggestion menu', async () => {
+  const ui = await setup(fixtures);
+  for (const query of ['ali', 'alic', 'alica', 'alicat', 'alicate', 'alicates']) {
+    ui.search(query); assert.deepEqual(ui.ids(), ['clamp', 'pliers'], query);
+  }
+  ui.choose('Chaves e alicates'); ui.search('alica');
+  assert.deepEqual(ui.ids(), ['pliers']);
+});
+
+test('unfinished words rank direct products before matching accessories', async () => {
+  const ui = await setup([item('holder', 'Suporte para alicate'), item('pliers', 'Alicate universal')]);
+  ui.search('alica'); assert.deepEqual(ui.ids(), ['pliers', 'holder']);
+});
+
+test('the final word can be partial while earlier terms must match', async () => {
+  const ui = await setup(fixtures);
+  ui.search('bomba vá'); assert.deepEqual(ui.ids(), ['pump', 'pump-oil', 'pump-kit']);
+  ui.search('alicate digi'); assert.deepEqual(ui.ids(), ['clamp']);
+});
+
+test('raw prefixes are not mistaken for inflected complete words', async () => {
+  const ui = await setup([
+    item('brand', 'Alicate Tramontina'), item('transformer', 'Transformador de tensão'),
+    item('adapter', 'Adaptador de conexão'), item('adapters', 'Jogo de Adaptadores de latão'),
+  ]);
+  ui.search('trans'); assert.deepEqual(ui.ids(), ['transformer']);
+  ui.search('adaptadore'); assert.deepEqual(ui.ids(), ['adapters']);
+});
+
+test('an exact word elsewhere does not block a partial model or a category search', async () => {
+  const ui = await setup([
+    item('number', 'Kit com 18 peças'), item('drill', 'Furadeira GSB 18V'),
+    item('brand', 'Abraçadeira SD TOOLS'), item('bit', 'Broca SDS Plus', 'Brocas'),
+  ]);
+  ui.search('gsb 18'); assert.deepEqual(ui.ids(), ['drill']);
+  ui.choose('Brocas'); ui.search('sd'); assert.deepEqual(ui.ids(), ['bit']);
+});
+
+test('complete broca keeps precision instead of expanding to brocante', async () => {
+  const ui = await setup([item('screw', 'Parafuso auto brocante'), item('bit', 'Broca de concreto')]);
+  ui.search('broca'); assert.deepEqual(ui.ids(), ['bit']);
+  ui.search('bro'); assert.deepEqual(ui.ids(), ['bit', 'screw']);
+});
+
+test('partial hose searches preserve explicit absence and ambiguous prefixes', async () => {
+  const ui = await setup([
+    item('no-hose', 'Manifold sem mangueiras'), item('hose', 'Mangueira de carga'),
+    item('kit', 'Lavadora sem fio com mangueira'), item('gauge', 'Manômetro digital'),
+  ]);
+  ui.search('mangu'); assert.deepEqual(ui.ids(), ['hose', 'kit']);
+  ui.search('sem mangu'); assert.deepEqual(ui.ids(), ['no-hose']);
+  ui.search('man'); assert.deepEqual(ui.ids(), ['no-hose', 'hose', 'gauge', 'kit']);
 });
 
 test('supports common Portuguese consonant plurals without broad prefix stemming', async () => {
