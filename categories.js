@@ -6,6 +6,7 @@
     ['Válvulas e núcleos',/^(valvula|nucleo)|valvula.*bomba.*vacuo/],
     ['Mangueiras e conexões',/^(mangueira|adaptador|engate|conexao).*bomba.*vacuo/],
     ['Acessórios para bombas de vácuo',/^(filtro|tampa|vedacao|kit de reparo).*bomba.*vacuo/],
+    ['Vacuômetros',/^vacuometro\b/],
     ['Bombas de vácuo',/bomba.*vacuo|vacuo.*bomba/],
     ['Bombas de limpeza',/(bomba|lavadora|pressurizador|pulverizador).*(limpeza|lavagem|ar condicionado|portatil|pressao)|bomba.*limpa/],
     ['Manifolds e manômetros',/manifold|manometro/],

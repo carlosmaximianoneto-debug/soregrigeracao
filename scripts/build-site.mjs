@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const SITE_URL = 'https://sorefrigeracao.netlify.app';
+export const SITE_URL = 'https://sorefrigeracao.com';
 export const CATALOGUE_URL = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/refri-catalogue/catalogue.json';
 export const PUBLIC_FILES = Object.freeze([
   'index.html', 'styles.css', 'mobile-refinements.css', 'carousel.css',

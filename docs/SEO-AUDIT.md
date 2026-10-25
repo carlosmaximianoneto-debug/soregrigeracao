@@ -44,7 +44,7 @@ Referências SEO: [Google — títulos descritivos e concisos](https://developer
 
 1. **Alta:** ativar e validar a fonte pública sanitizada do catálogo. Sem ela, rotas de catálogo retornam indisponibilidade; não fazer merge em `main` antes desse passo.
 2. **Alta:** validar build e função no ambiente Netlify, incluindo CORS, respostas 200/301/404/503 e atualização do JSON.
-3. **Média:** após publicação, configurar Search Console no domínio definitivo e enviar o sitemap. O domínio próprio ainda não foi definido.
+3. **Média:** após publicação, configurar Search Console no domínio definitivo e enviar o sitemap. O domínio definitivo é `sorefrigeracao.com`.
 4. **Média:** medir desempenho real mobile em produção. Não foi atribuída nota Lighthouse ou aprovação de Core Web Vitals.
 5. **Evolução:** enriquecer produtos com especificações verificadas e conteúdo editorial próprio. As páginas atuais usam dados do cadastro e orientação de categoria; não alegam testes práticos dos equipamentos.
 
