@@ -4,7 +4,23 @@
   const select = document.querySelector('#category'), pills = document.querySelector('.filters');
   const grid = document.querySelector('#products'), count = document.querySelector('#result-count');
   const empty = document.querySelector('#empty'), note = document.querySelector('.catalogue-note');
-  const normalize = text => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[-–·]/g, ' ');
+  const normalize = text => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const stopwords = new Set(['a','o','as','os','de','da','do','das','dos','e','com','para','por','em','no','na','nos','nas']);
+  const pluralForms = new Map([['gases','gas'],['manifolds','manifold'],['kits','kit'],['bits','bit']]);
+  function singular(word){
+    if(pluralForms.has(word))return pluralForms.get(word);
+    // Conservative plural endings, without fuzzy/prefix matching or changes to model numbers.
+    if(word.length<4||/\d/.test(word))return word;
+    if(/(?:oes|aes)$/.test(word))return word.slice(0,-3)+'ao';
+    if(word.length>4&&/[aeou]is$/.test(word))return word.slice(0,-2)+'l';
+    if(/ns$/.test(word))return word.slice(0,-2)+'m';
+    if(/[rz]es$/.test(word))return word.slice(0,-2);
+    return /[aeiou]s$/.test(word)?word.slice(0,-1):word;
+  }
+  function searchWords(text){
+    const words=normalize(text).replace(/\bserras?copos?\b/g,'serra copo').match(/[a-z0-9]+/g)||[];
+    return words.filter(word=>!stopwords.has(word)).map(singular);
+  }
   const money = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   const settings = window.REFRI_CATALOGUE || {catalogueUrl:'./catalogue-public.json',preview:false,maxAgeMs:900000,refreshMs:300000};
   let snapshotTime = 0, loading = false;
@@ -23,7 +39,17 @@
     more.hidden=shown>=filtered.length;empty.hidden=filtered.length>0;select.value=category;
     pills.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.filter===category)));
   }
-  function filter(){const words=normalize(input.value.trim()).split(/\s+/).filter(Boolean);filtered=products.filter(p=>(category==='all'||p.category===category)&&words.every(w=>p.search.includes(w)));shown=24;render();}
+  function filter(){
+    const words=searchWords(input.value);
+    const wantsHose=words.includes('mangueira');
+    const withoutHose=words.some((word,index)=>word==='mangueira'&&words[index-1]==='sem');
+    filtered=products.filter(p=>(category==='all'||p.category===category)&&words.every(word=>p.searchWords.includes(word))&&
+      // A manifold explicitly sold "sem mangueira(s)" is not a hose result.
+      (!wantsHose||p.searchWords.some((word,index)=>word==='mangueira'&&(p.searchWords[index-1]==='sem')===withoutHose)));
+    // Keep genuine kits/accessories; titles naming the searched item first appear first.
+    if(words.length)filtered.sort((a,b)=>a.searchWords.indexOf(words[0])-b.searchWords.indexOf(words[0]));
+    shown=24;render();
+  }
   async function load(){
     if (loading) return;
     loading = true;
@@ -33,8 +59,9 @@
       const data=await response.json();if(!Array.isArray(data.products))throw new Error('Catálogo inválido');
       snapshotTime = Date.parse(data.generatedAt);
       if (!settings.preview && (!Number.isFinite(snapshotTime) || Date.now()-snapshotTime>settings.maxAgeMs || snapshotTime>Date.now()+60000)) throw new Error('Catálogo desatualizado');
-      const ids=new Set();products=data.products.flatMap(p=>{const url=safeUrl(p.url),image=safeUrl(p.image,true);if(!url||!image||!p.title||ids.has(p.id))return[];ids.add(p.id);const category=p.category||window.catalogueCategory(p.title);return[{...p,url,image,category,price:Number(p.price),search:normalize(`${p.title} ${category}`)}];});
+      const ids=new Set();products=data.products.flatMap(p=>{const url=safeUrl(p.url),image=safeUrl(p.image,true);if(!url||!image||!p.title||ids.has(p.id))return[];ids.add(p.id);const category=p.category||window.catalogueCategory(p.title);return[{...p,url,image,category,price:Number(p.price),searchWords:searchWords(p.title)}];});
       const categories=[...new Set(products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+      if(category!=='all'&&!categories.includes(category))category='all';
       select.innerHTML='<option value="all">Todas as categorias</option>'+categories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('');
       const quick=['Bombas de vácuo','Bombas de limpeza','Serras-copo','Manifolds e manômetros','Multímetros e alicates amperímetros'].filter(c=>categories.includes(c));
       pills.innerHTML='<button type="button" data-filter="all" aria-pressed="true">Todos</button>'+quick.map(c=>`<button type="button" data-filter="${escape(c)}" aria-pressed="false">${escape(c)}</button>`).join('');
