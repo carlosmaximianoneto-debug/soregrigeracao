@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { publisherSchema } from '../site-identity.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SITE_URL = 'https://sorefrigeracao.com';
@@ -21,13 +22,17 @@ export function invitationContract(html) {
 }
 
 export function productionHTML(source) {
+  const structuredData = { '@context': 'https://schema.org', '@graph': [
+    { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'Só Refrigeração', url: `${SITE_URL}/`, inLanguage: 'pt-BR', publisher: { '@id': `${SITE_URL}/#organization` } },
+    publisherSchema(SITE_URL),
+  ] };
   let html = source
     .replace(/<meta\s+name="robots"\s+content="[^"]*"\s*\/?>/i, '<meta name="robots" content="index,follow,max-image-preview:large">')
     .replace(/<title>[\s\S]*?<\/title>/i, '<title>Ferramentas para Refrigerista | Só Refrigeração</title>')
     .replace(/<link\s+rel="canonical"[^>]*>/gi, '')
     .replace(/<script>if\(new URLSearchParams\(location\.search\)[\s\S]*?<\/script>/, '')
     .replace('<section class="hero-visual pump-carousel"','<section hidden class="hero-visual pump-carousel"');
-  const metadata = `<link rel="canonical" href="${SITE_URL}/"><meta property="og:site_name" content="Só Refrigeração"><meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Só Refrigeração — ferramentas para refrigerista"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:url" content="${SITE_URL}/"><meta property="og:title" content="Ferramentas para Refrigerista | Só Refrigeração"><meta property="og:description" content="Ferramentas para refrigerista: bombas de vácuo, manifolds e serras-copo. Consulte o catálogo e receba ofertas no WhatsApp."><script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'Só Refrigeração', url: `${SITE_URL}/`, inLanguage: 'pt-BR' })}</script>`;
+  const metadata = `<link rel="canonical" href="${SITE_URL}/"><meta property="og:site_name" content="Só Refrigeração"><meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Só Refrigeração — ferramentas para refrigerista"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:url" content="${SITE_URL}/"><meta property="og:title" content="Ferramentas para Refrigerista | Só Refrigeração"><meta property="og:description" content="Ferramentas para refrigerista: bombas de vácuo, manifolds e serras-copo. Consulte o catálogo e receba ofertas no WhatsApp."><script type="application/ld+json">${JSON.stringify(structuredData)}</script>`;
   html = html.replace('</head>', `${metadata}</head>`);
   if (!html.includes('content="index,follow,max-image-preview:large"') || /noindex|Prévia de entrada/.test(html)) throw new Error('Metadados de prévia permaneceram no HTML de produção.');
   return html;

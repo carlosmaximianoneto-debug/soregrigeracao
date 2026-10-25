@@ -11,7 +11,7 @@ body:has(.hero){background:var(--paper)}
 .image-unavailable{height:100%;display:grid;place-items:center;color:var(--muted);font-size:13px}
 .static-catalogue-link{margin-top:24px;font-size:13px;line-height:1.7}
 .static-catalogue-link a{min-height:44px;display:inline-flex;align-items:center;color:#254e60}
-.catalogue-preview .header,.catalogue-preview .hero-band,.catalogue-preview .scope-strip,.catalogue-preview .how,.catalogue-preview .questions,.catalogue-preview .final,.catalogue-preview .footer{display:none}
+.catalogue-preview .header,.catalogue-preview .hero-band,.catalogue-preview .scope-strip,.catalogue-preview .how,.catalogue-preview .questions,.catalogue-preview .transparency,.catalogue-preview .final,.catalogue-preview .footer{display:none}
 .catalogue-preview .catalogue{padding-top:28px;padding-bottom:100px}
 .product-link{min-height:44px}
 .filters{gap:8px}
@@ -21,6 +21,19 @@ body:has(.hero){background:var(--paper)}
 .spec,.product-type,.product-link{font-size:12px}
 .product-info{padding-bottom:10px}
 .catalogue-note{font-size:12px}
+.transparency{display:grid;grid-template-columns:1fr 1.25fr;gap:70px;border-top:1px solid var(--line);padding-block:52px 60px}
+.transparency h2{font-size:35px;line-height:1.1}
+.transparency p{font-size:14px;line-height:1.8;color:var(--muted);max-width:68ch}
+.transparency-intro p{margin-top:20px;max-width:42ch}
+.transparency-identity{display:grid;gap:14px;margin:24px 0 0;padding-top:21px;border-top:1px solid var(--line);font-size:13px;line-height:1.65}
+.transparency-identity dt{color:var(--muted);font-size:12px}
+.transparency-identity dd{margin:3px 0 0;overflow-wrap:anywhere}
+.transparency-identity a{text-underline-offset:4px}
+.transparency-details h3{font:600 15px/1.5 Inter,sans-serif;letter-spacing:0;margin:0 0 10px}
+.transparency-details p+p{margin-top:14px}
+.transparency-details h3:not(:first-child){margin-top:27px}
+.footer-about,.footer-contact{display:inline-flex;align-items:center;min-height:44px;font-size:12px;text-underline-offset:4px;overflow-wrap:anywhere}
+.footer-about{font-weight:600}
 @media(max-width:700px){
   .hero-copy>p:not(.join-note){font-size:15px;line-height:1.65}
   .hero .join-note{font-size:12px}
@@ -56,6 +69,10 @@ body:has(.hero){background:var(--paper)}
   .how p{font-size:14px;line-height:1.7}
   .questions summary{font-size:14px;line-height:1.5}
   .questions details>p{font-size:14px;line-height:1.75}
+  .transparency{grid-template-columns:1fr;gap:28px;padding-block:36px 42px}
+  .transparency h2{font-size:32px}
+  .transparency-intro p{margin-top:16px;max-width:none}
+  .transparency p{line-height:1.75}
   .final p{font-size:14px;line-height:1.7}
   .final .button{font-size:13px;min-height:58px;padding-inline:14px;gap:9px}
   .footer{font-size:12px;line-height:1.8}

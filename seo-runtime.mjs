@@ -1,4 +1,5 @@
 import vm from 'node:vm';
+import { publisherSchema } from './site-identity.mjs';
 
 export const PAGE_SIZE = 24;
 const BRAND = 'Só Refrigeração';
@@ -76,12 +77,13 @@ const breadcrumbData = crumbs => ({ '@type': 'BreadcrumbList', itemListElement: 
 function document({ route, title, description, crumbs, content, entity, image = '' }) {
   const canonical = options.base ? `<link rel="canonical" href="${escapeHTML(absolute(route))}"><meta property="og:url" content="${escapeHTML(absolute(route))}">` : '';
   const site = { '@type': 'WebSite', name: BRAND, inLanguage: 'pt-BR', ...(options.base ? { '@id': `${options.base}/#website`, url: `${options.base}/` } : {}) };
-  const graph = { '@context': 'https://schema.org', '@graph': [site, breadcrumbData(crumbs), entity] };
+  if (options.base) site.publisher = { '@id': `${options.base}/#organization` };
+  const graph = { '@context': 'https://schema.org', '@graph': [site, ...(options.base ? [publisherSchema(options.base)] : []), breadcrumbData(crumbs), entity] };
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#10232d"><title>${escapeHTML(title)}</title><meta name="description" content="${escapeHTML(description)}"><meta name="robots" content="${options.production ? 'index,follow,max-image-preview:large' : 'noindex,nofollow'}">${canonical}<meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:site_name" content="${BRAND}"><meta property="og:title" content="${escapeHTML(title)}"><meta property="og:description" content="${escapeHTML(description)}"><meta property="og:image" content="${escapeHTML(absolute(image || '/assets/compartilhamento.png'))}"><meta property="og:image:alt" content="${escapeHTML(image ? title : 'Só Refrigeração — ferramentas para refrigerista')}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${escapeHTML(absolute(image || '/assets/compartilhamento.png'))}"><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"><link rel="icon" href="/assets/favicon.ico" sizes="16x16 32x32 48x48"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" sizes="180x180"><link rel="icon" href="/assets/icon-192.png" sizes="192x192" type="image/png"><link rel="icon" href="/assets/icon-512.png" sizes="512x512" type="image/png"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/seo-pages.css"><script type="application/ld+json">${jsonLD(graph)}</script></head>
 <body><a class="skip" href="#conteudo">Pular para o conteúdo</a><header class="site-header"><div class="wrap header-inner"><a class="brand" href="/" aria-label="Só Refrigeração, início">${snowflake}<span>SÓ REFRIGERAÇÃO<small>FERRAMENTAS PARA QUEM É DA ÁREA</small></span></a><nav aria-label="Principal"><a href="${catalogueRoute}">Catálogo</a><a href="/#catalogo">Buscar ferramenta</a></nav></div></header>
 <main id="conteudo" class="wrap">${breadcrumbHTML(crumbs)}${content}</main>
-<footer class="site-footer"><div class="wrap footer-inner"><p><strong>${BRAND}</strong><br>Ferramentas e equipamentos para refrigeração.</p><p>O anúncio de destino informa preço, frete e disponibilidade.<br>Os links de compra são links de afiliado.</p><a href="${catalogueRoute}">Explorar o catálogo ↑</a></div></footer></body></html>`;
+<footer class="site-footer"><div class="wrap footer-inner"><p><strong>${BRAND}</strong><br>Ferramentas e equipamentos para refrigeração.<br><a href="/#sobre">Sobre e transparência</a></p><p>O anúncio de destino informa preço, frete e disponibilidade.<br>Os links de compra são links de afiliado.</p><a href="${catalogueRoute}">Explorar o catálogo ↑</a></div></footer></body></html>`;
   return html;
 }
 const baseCrumbs = [{ name: 'Início', route: '/' }, { name: 'Catálogo', route: catalogueRoute }];
@@ -140,6 +142,8 @@ return {
     return entry.kind === 'product' ? renderProduct(entry.item) : collection(entry.name, entry.route, entry.list, entry.isCategory, entry.page);
   },
   replacementRoute(route) {
+    // This mixed category was split into brocas, discos, esmerilhadeiras and serras.
+    if (/^\/seo\/categorias\/brocas-e-acessorios-de-corte\/(?:pagina\/[1-9]\d*\/)?$/.test(route)) return catalogueRoute;
     if (!route.startsWith('/seo/produtos/')) return null;
     return products.find(item => route.endsWith('-' + item.id + '/'))?.route || null;
   },
