@@ -9,7 +9,7 @@
   const pluralForms = new Map([['gases','gas'],['manifolds','manifold'],['kits','kit'],['bits','bit']]);
   function singular(word){
     if(pluralForms.has(word))return pluralForms.get(word);
-    // Conservative plural endings, without fuzzy/prefix matching or changes to model numbers.
+    // Normalize complete words conservatively; leave model numbers unchanged.
     if(word.length<4||/\d/.test(word))return word;
     if(/(?:oes|aes)$/.test(word))return word.slice(0,-3)+'ao';
     if(word.length>4&&/[aeou]is$/.test(word))return word.slice(0,-2)+'l';
@@ -17,9 +17,9 @@
     if(/[rz]es$/.test(word))return word.slice(0,-2);
     return /[aeiou]s$/.test(word)?word.slice(0,-1):word;
   }
-  function searchWords(text){
+  function searchTokens(text){
     const words=normalize(text).replace(/\bserras?copos?\b/g,'serra copo').match(/[a-z0-9]+/g)||[];
-    return words.filter(word=>!stopwords.has(word)).map(singular);
+    return words.filter(word=>!stopwords.has(word));
   }
   const money = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   const settings = window.REFRI_CATALOGUE || {catalogueUrl:'./catalogue-public.json',preview:false,maxAgeMs:900000,refreshMs:300000};
@@ -40,14 +40,24 @@
     pills.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.filter===category)));
   }
   function filter(){
-    const words=searchWords(input.value);
-    const wantsHose=words.includes('mangueira');
-    const withoutHose=words.some((word,index)=>word==='mangueira'&&words[index-1]==='sem');
-    filtered=products.filter(p=>(category==='all'||p.category===category)&&words.every(word=>p.searchWords.includes(word))&&
-      // A manifold explicitly sold "sem mangueira(s)" is not a hose result.
-      (!wantsHose||p.searchWords.some((word,index)=>word==='mangueira'&&(p.searchWords[index-1]==='sem')===withoutHose)));
-    // Keep genuine kits/accessories; titles naming the searched item first appear first.
-    if(words.length)filtered.sort((a,b)=>a.searchWords.indexOf(words[0])-b.searchWords.indexOf(words[0]));
+    const tokens=searchTokens(input.value), words=tokens.map(singular), last=words.length-1;
+    function matchIndex(product,queryIndex,partial=false){
+      return product.searchWords.findIndex((word,titleIndex)=>{
+        const matches=partial
+          ? product.searchTokens[titleIndex].startsWith(tokens[queryIndex])||word.startsWith(tokens[queryIndex])
+          : word===words[queryIndex];
+        // Apply hose exclusions to the matched word, not to ambiguous prefixes like "man".
+        return matches&&(word!=='mangueira'||(product.searchWords[titleIndex-1]==='sem')===(words[queryIndex-1]==='sem'));
+      });
+    }
+    filtered=products.filter(p=>(category==='all'||p.category===category)&&words.slice(0,last).every((word,index)=>matchIndex(p,index)>=0));
+    if(words.length){
+      // Prefer whole words within the current filters; otherwise complete the word being typed.
+      const partial=tokens[last].length>=2&&!filtered.some(p=>matchIndex(p,last)>=0);
+      filtered=filtered.filter(p=>matchIndex(p,last,partial)>=0);
+      // Keep genuine kits/accessories; titles naming the searched item first appear first.
+      filtered.sort((a,b)=>matchIndex(a,0,partial&&last===0)-matchIndex(b,0,partial&&last===0));
+    }
     shown=24;render();
   }
   async function load(){
@@ -59,7 +69,7 @@
       const data=await response.json();if(!Array.isArray(data.products))throw new Error('Catálogo inválido');
       snapshotTime = Date.parse(data.generatedAt);
       if (!settings.preview && (!Number.isFinite(snapshotTime) || Date.now()-snapshotTime>settings.maxAgeMs || snapshotTime>Date.now()+60000)) throw new Error('Catálogo desatualizado');
-      const ids=new Set();products=data.products.flatMap(p=>{const url=safeUrl(p.url),image=safeUrl(p.image,true);if(!url||!image||!p.title||ids.has(p.id))return[];ids.add(p.id);const category=p.category||window.catalogueCategory(p.title);return[{...p,url,image,category,price:Number(p.price),searchWords:searchWords(p.title)}];});
+      const ids=new Set();products=data.products.flatMap(p=>{const url=safeUrl(p.url),image=safeUrl(p.image,true);if(!url||!image||!p.title||ids.has(p.id))return[];ids.add(p.id);const category=p.category||window.catalogueCategory(p.title),tokens=searchTokens(p.title);return[{...p,url,image,category,price:Number(p.price),searchTokens:tokens,searchWords:tokens.map(singular)}];});
       const categories=[...new Set(products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
       if(category!=='all'&&!categories.includes(category))category='all';
       select.innerHTML='<option value="all">Todas as categorias</option>'+categories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('');
