@@ -29,7 +29,7 @@ class Element {
   focus() { this.focused = true; }
 }
 
-function setup({ reducedMotion = false, initial, optimized = false } = {}) {
+function setup({ reducedMotion = false, initial, optimized = false, desktop = true } = {}) {
   const document = new Element('document'), carousel = new Element('section', 'pump-carousel');
   const viewport = new Element('div', 'pump-viewport'), track = new Element('div', 'pump-track');
   const controls = new Element('div', 'pump-controls'), pause = new Element('button', 'pump-pause');
@@ -37,13 +37,15 @@ function setup({ reducedMotion = false, initial, optimized = false } = {}) {
   viewport.append(track); controls.append(pause, dots, previous, counter, next); carousel.append(viewport, controls); document.append(carousel);
   document.createElement = tag => new Element(tag); document.hidden = false;
   const media = new Element(); media.matches = reducedMotion;
+  const desktopMedia = new Element(); desktopMedia.matches = desktop;
   const timers = new Map(); let timerId = 0;
-  const context = { document, window: { REFRI_CATALOGUE: { preview: false }, matchMedia: () => media }, URL, console, setInterval: callback => { timers.set(++timerId, callback); return timerId; }, clearInterval: id => timers.delete(id) };
+  const context = { document, window: { REFRI_CATALOGUE: { preview: false }, matchMedia: query => query === '(min-width: 901px)' ? desktopMedia : media }, URL, console, setInterval: callback => { timers.set(++timerId, callback); return timerId; }, clearInterval: id => timers.delete(id) };
   if (optimized) context.window.catalogueImageUrl = (url, width) => `/.netlify/images?url=${encodeURIComponent(url)}&w=${width}`;
   if (initial) context.window.REFRI_CURRENT_CATALOGUE = initial;
   vm.runInNewContext(categories, context);
   vm.runInNewContext(source, context);
   return { carousel, track, pause, previous, next, counter, timers, document, media,
+    resize: isDesktop => { desktopMedia.matches = isDesktop; desktopMedia.dispatch('change'); },
     update: products => document.dispatch('catalogue:updated', { detail: { products } }),
     ids: () => track.children.map(slide => slide.dataset.productId),
     active: () => track.children.find(slide => slide.getAttribute('aria-hidden') === 'false'),
@@ -154,4 +156,56 @@ test('a changed offscreen image remains deferred until navigation reaches its ne
   assert.equal(image.src, undefined);
   for (let i = 0; i < 3; i++) ui.next.dispatch('click');
   assert.equal(image.src, 'https://http2.mlstatic.com/new5.jpg');
+});
+
+test('mobile initial load creates no slides or image sources and starts no autoplay', () => {
+  const rows = Array.from({ length: 54 }, (_, i) => pump(i + 1));
+  const ui = setup({ desktop: false, initial: rows });
+  assert.deepEqual(ui.ids(), []); assert.equal(ui.track.querySelectorAll('img').length, 0);
+  assert.equal(ui.timers.size, 0); assert.equal(ui.carousel.hidden, true);
+  ui.update(rows); assert.deepEqual(ui.ids(), []); assert.equal(ui.timers.size, 0);
+  ui.resize(true);
+  assert.equal(ui.ids().length, 54); assert.equal(ui.carousel.hidden, false);
+  assert.equal(ui.track.querySelectorAll('img').filter(image => image.src).length, 3);
+  assert.equal(ui.timers.size, 1);
+});
+
+test('desktop to mobile suspends rotation and defers catalogue changes until desktop returns', () => {
+  const ui = setup({ initial: [pump(10), pump(20), pump(30), pump(40)] });
+  [...ui.timers.values()][0]();
+  assert.equal(ui.active().dataset.productId, '20');
+  const previousImage = ui.active().querySelector('img');
+  ui.resize(false);
+  assert.equal(ui.timers.size, 0); assert.equal(ui.carousel.hidden, true);
+  ui.update([pump(5), pump(20, 'Bomba de vácuo nova 20', { image: 'https://http2.mlstatic.com/new20.jpg' }), pump(50)]);
+  assert.equal(previousImage.src, pump(20).image);
+  assert.deepEqual(ui.ids(), ['10', '20', '30', '40']);
+  ui.next.dispatch('click'); assert.equal(ui.active().dataset.productId, '20');
+  ui.resize(true);
+  assert.deepEqual(ui.ids(), ['5', '20', '50']);
+  assert.equal(ui.active().dataset.productId, '20');
+  assert.equal(ui.active().querySelector('img').src, 'https://http2.mlstatic.com/new20.jpg');
+  assert.equal(ui.carousel.hidden, false); assert.equal(ui.timers.size, 1);
+});
+
+test('unchanged catalogue becomes visible again after mobile without rebuilding or losing active product', () => {
+  const ui = setup({ initial: [pump(10), pump(20)] });
+  [...ui.timers.values()][0](); const active = ui.active();
+  ui.resize(false); assert.equal(ui.carousel.hidden, true); assert.equal(ui.timers.size, 0); ui.resize(true);
+  assert.equal(ui.active(), active); assert.equal(ui.carousel.hidden, false); assert.equal(ui.timers.size, 1);
+});
+
+test('catalogue invalidated on mobile cannot restore removed products on desktop', () => {
+  const ui = setup({ initial: [pump(10), pump(20)] });
+  ui.resize(false); assert.equal(ui.carousel.hidden, true); ui.update([]); ui.resize(true);
+  assert.deepEqual(ui.ids(), []); assert.equal(ui.carousel.hidden, true); assert.equal(ui.timers.size, 0);
+});
+
+test('a pending optimized image failure cannot start a fallback download while mobile is hidden', () => {
+  const ui = setup({ initial: [pump(1)], optimized: true });
+  const image = ui.active().querySelector('img');
+  ui.resize(false); image.dispatch('error');
+  assert.notEqual(image.src, pump(1).image);
+  ui.resize(true); assert.match(image.src, /^\/\.netlify\/images\?/);
+  image.dispatch('error'); assert.equal(image.src, pump(1).image);
 });
