@@ -9,8 +9,9 @@
   const next = carousel.querySelector('.pump-next');
   const position = carousel.querySelector('.pump-position');
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const desktop = window.matchMedia('(min-width: 901px)');
   const order = new Intl.Collator('pt-BR', { numeric: true });
-  let slides = [], index = 0, userPaused = reduced.matches, hovered = false, inView = true, timer = null, start = null, pausedOnPress = null, catalogueKey = '';
+  let slides = [], latestProducts = [], index = 0, userPaused = reduced.matches, hovered = false, inView = true, timer = null, start = null, pausedOnPress = null, catalogueKey = '';
 
   const normal = text => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^[^a-z0-9]+/, '');
   function safeURL(value, image = false) {
@@ -46,6 +47,10 @@
     const image = element('img');
     image.width = 800; image.height = 800; image.loading = 'lazy'; image.decoding = 'async'; image.draggable = false;
     image.addEventListener('error', () => {
+      // A request begun on desktop may fail after a resize. Defer its retry.
+      if (!desktop.matches) {
+        image.dataset.loaded = ''; image.removeAttribute('src'); image.removeAttribute('srcset'); return;
+      }
       if (image.dataset.optimized === 'true' && image.dataset.fallback !== 'true') {
         image.dataset.fallback = 'true'; image.srcset = ''; image.src = image.dataset.originalSrc;
       } else image.hidden = true;
@@ -72,6 +77,7 @@
     link.setAttribute('aria-label', `Ver ${product.title} no Mercado Livre`);
   }
   function loadImage(image, active) {
+    if (!desktop.matches) return;
     image.loading = active ? 'eager' : 'lazy';
     image.fetchPriority = active ? 'high' : 'low';
     if (image.dataset.loaded === 'true') return;
@@ -79,14 +85,15 @@
     const source = window.catalogueImageUrl?.(original, 800) || original;
     image.dataset.optimized = String(source !== original);
     if (source !== original) {
-      image.sizes = '(max-width: 600px) calc(100vw - 40px), 500px';
+      image.sizes = '(max-width: 1100px) 420px, 500px';
       image.srcset = [400, 800, 1200].map(width => `${window.catalogueImageUrl(original, width)} ${width}w`).join(', ');
     }
     image.dataset.loaded = 'true'; image.src = source;
   }
   function render() {
     carousel.setAttribute('aria-busy', 'false');
-    carousel.hidden = slides.length === 0;
+    carousel.hidden = !desktop.matches || slides.length === 0;
+    if (!desktop.matches) return;
     previous.disabled = next.disabled = pause.disabled = slides.length < 2;
     position.textContent = slides.length ? `${index + 1} / ${slides.length}` : '0 / 0';
     position.setAttribute('aria-label', slides.length ? `Bomba ${index + 1} de ${slides.length}` : 'Nenhuma bomba disponível');
@@ -108,17 +115,23 @@
       ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m8 5 11 7-11 7Z"/></svg> Reproduzir'
       : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg> Pausar';
     position.setAttribute('aria-live', userPaused ? 'polite' : 'off');
-    if (!userPaused && !hovered && inView && !document.hidden && slides.length > 1) timer = setInterval(() => { index = (index + 1) % slides.length; render(); }, 5000);
+    if (desktop.matches && !userPaused && !hovered && inView && !document.hidden && slides.length > 1) timer = setInterval(() => { if (!desktop.matches) return; index = (index + 1) % slides.length; render(); }, 5000);
   }
   function go(nextIndex) {
-    if (!slides.length) return;
+    if (!desktop.matches || !slides.length) return;
     index = (nextIndex + slides.length) % slides.length;
     userPaused = true; render(); schedule();
   }
   function updateCatalogue(event) {
-    const products = currentPumps(event.detail?.products), nextKey = JSON.stringify(products);
+    latestProducts = currentPumps(event.detail?.products);
+    applyCatalogue();
+  }
+  function applyCatalogue(resized = false) {
+    // Mobile keeps only data; no slide creation or new image request is needed.
+    if (!desktop.matches) { render(); schedule(); return; }
+    const products = latestProducts, nextKey = JSON.stringify(products);
     // Price is not rendered here. Compare only the validated fields this carousel uses.
-    if (nextKey === catalogueKey) return;
+    if (nextKey === catalogueKey) { if (resized) { render(); schedule(); } return; }
     catalogueKey = nextKey;
     const activeId = slides[index]?.dataset.productId;
     const previousSlides = new Map(slides.map(slide => [slide.dataset.productId, slide]));
@@ -156,6 +169,7 @@
   viewport.addEventListener('lostpointercapture', () => { start = null; });
   document.addEventListener('visibilitychange', () => { start = null; schedule(); });
   document.addEventListener('catalogue:updated', updateCatalogue);
+  desktop.addEventListener('change', () => { start = null; hovered = false; applyCatalogue(true); });
   reduced.addEventListener('change', () => { userPaused = reduced.matches; schedule(); });
   if ('IntersectionObserver' in window) new IntersectionObserver(entries => { inView = entries[0].isIntersecting; schedule(); }).observe(carousel);
   // There is no static product fallback: only the latest accepted catalogue is shown.

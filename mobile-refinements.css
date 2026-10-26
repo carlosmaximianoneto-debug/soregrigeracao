@@ -82,3 +82,55 @@ body:has(.hero){background:var(--paper)}
   .empty button{font-size:13px;min-height:48px}
 }
 @media(max-width:360px){.product-photo{height:142px}.product h3{font-size:13px}.product-link{font-size:11px}.final .button{font-size:12px}.hero-join{font-size:13px}}
+
+/* Catalogue first: a compact desktop showcase, no carousel downloads on narrow screens. */
+.header-inner{height:80px}
+.hero.catalogue-hero{min-height:0;grid-template-columns:minmax(0,1fr) minmax(360px,500px);gap:48px;padding-block:24px 28px}
+.catalogue-hero h1{font-size:48px;line-height:1.02}
+.catalogue-hero .hero-copy>p:not(.join-note){max-width:47ch;font-size:14px;line-height:1.65;margin-top:14px}
+.catalogue-hero .hero-join{min-height:48px;margin-top:18px;padding:12px 18px;font-size:13px}
+.catalogue-hero .join-note{margin-top:9px;font-size:12px}
+.catalogue-hero .pump-carousel{width:100%;margin:0}
+.catalogue-hero .product-stage{height:250px;padding:38px 22px 14px}
+.catalogue-hero .stage-label{top:16px;left:22px;font-size:9px;letter-spacing:.08em}
+.catalogue-hero .pump-slide figcaption{padding:12px 16px;min-height:76px;gap:12px}
+.catalogue-hero .pump-slide figcaption strong{font-size:15px;line-height:1.4}
+.catalogue-hero .pump-slide figcaption span{display:none}
+.catalogue-hero .pump-slide figcaption a{padding:10px}
+.catalogue{padding-top:30px}
+.catalogue .section-heading{margin-bottom:20px;gap:18px}
+.catalogue .section-heading h2{font-size:32px;line-height:1.1}
+.catalogue .section-heading>p{font-size:13px;line-height:1.6}
+@media(min-width:901px){
+  .catalogue{display:grid;grid-template-columns:minmax(0,1fr) 300px;column-gap:20px}
+  .catalogue>*{grid-column:1/-1}
+  .catalogue .search{grid-column:1}
+  .catalogue .category-select{grid-column:2;margin-top:0;max-width:none;align-self:end}
+  .catalogue .category-select select{height:62px}
+}
+@media(min-width:901px) and (max-width:1100px){
+  .hero.catalogue-hero{grid-template-columns:minmax(0,1fr) 420px;gap:32px}
+  .catalogue-hero .product-stage{height:230px}
+}
+@media(max-width:900px){
+  .hero.catalogue-hero{display:block;min-height:0;width:100%;padding:22px 24px 24px}
+  .catalogue-hero .pump-carousel{display:none}
+  .catalogue-hero .hero-copy{max-width:660px;margin-inline:auto}
+  .catalogue-hero h1{font-size:42px}
+  .catalogue-hero .hero-join{width:auto;justify-content:center}
+  .catalogue-hero .join-note{text-align:left}
+}
+@media(max-width:700px){
+  .header-inner{height:70px}
+  .hero.catalogue-hero{padding:18px 20px 20px}
+  .catalogue-hero h1{font-size:36px;line-height:1.05}
+  .catalogue-hero .hero-copy>p:not(.join-note){font-size:13px;line-height:1.55;margin-top:10px;max-width:42ch}
+  .catalogue-hero .hero-join{width:100%;margin-top:16px;font-size:14px;min-height:56px;padding:14px 18px;gap:12px}
+  .catalogue-hero .hero-join svg:last-child{display:none}
+  .catalogue-hero .join-note{font-size:11px;margin-top:9px;text-align:center}
+  .catalogue{padding-top:24px}
+  .catalogue .section-heading{margin-bottom:18px}
+  .catalogue .section-heading h2{font-size:28px}
+  .catalogue .section-heading>p{display:none}
+}
+@media(max-width:360px){.hero.catalogue-hero{padding-inline:16px}.catalogue-hero h1{font-size:34px}}
