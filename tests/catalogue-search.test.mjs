@@ -14,6 +14,8 @@ class Element {
       textContent: '', innerHTML: '', events: {}, attributes: {}, dataset: {}, children: [] });
     this.classList = { add() {}, toggle() {} };
   }
+  set innerHTML(value) { this.markup = value; this.htmlWrites = (this.htmlWrites || 0) + 1; }
+  get innerHTML() { return this.markup; }
   addEventListener(type, callback) { (this.events[type] ||= []).push(callback); }
   dispatch(type, event = {}) {
     for (const callback of this.events[type] || []) callback({ target: this, preventDefault() {}, ...event });
@@ -31,11 +33,13 @@ const item = (id, title, category = 'Outras ferramentas e acessórios', changes 
   image: `https://http2.mlstatic.com/${id}.jpg`, url: `https://meli.la/${id}`, ...changes,
 });
 
-async function setup(rows, { preview = false, generatedAt } = {}) {
-  let now = Date.parse('2026-10-25T12:00:00Z');
+async function setup(rows, { preview = false, generatedAt, storage, deferNetwork = false, initialTime, preloaded } = {}) {
+  let now = initialTime ?? Date.parse('2026-10-25T12:00:00Z');
   const snapshot = products => ({ generatedAt: new Date(now).toISOString(), products });
   let data = { ...snapshot(rows), ...(generatedAt ? { generatedAt } : {}) };
   let fail = false;
+  let blocked = deferNetwork;
+  const pending = [], requests = [];
   const selectors = ['#search', '#category', '.filters', '#products', '#result-count', '#empty',
     '.catalogue-note', '.results-meta>span', '#catalogue-search', '#reset-search', '.mobile-join'];
   const nodes = Object.fromEntries(selectors.map(selector => [selector, new Element()]));
@@ -48,32 +52,151 @@ async function setup(rows, { preview = false, generatedAt } = {}) {
   document.addEventListener('catalogue:updated', event => updates.push(Array.from(event.detail.products)));
   class Clock extends Date { static now() { return now; } }
   const context = {
-    document, window: { REFRI_CATALOGUE: { catalogueUrl: './fixture.json', preview, maxAgeMs: 900000, refreshMs: 300000 } },
+    document, window: { localStorage: storage, REFRI_CATALOGUE_PRELOAD: preloaded, REFRI_CATALOGUE: { catalogueUrl: './fixture.json', preview, maxAgeMs: 900000, refreshMs: 300000 } },
     URL, Intl, Date: Clock,
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
     AbortSignal: { timeout: () => undefined },
-    fetch: async () => { if (fail) throw new Error('Fixture unavailable'); return { ok: true, json: async () => data }; },
-    setTimeout: callback => { timeouts.set(++timerId, callback); return timerId; },
+    fetch: async (url, options) => { requests.push({url, options}); if (blocked) await new Promise(resolve => pending.push(resolve)); if (fail) throw new Error('Fixture unavailable'); return { ok: true, json: async () => data }; },
+    setTimeout: (callback, delay) => { timeouts.set(++timerId, {callback, due: now + delay, delay}); return timerId; },
     clearTimeout: id => timeouts.delete(id),
     setInterval: (callback, delay) => { intervals.set(delay, callback); return ++timerId; },
   };
   vm.runInNewContext(categories, context);
   vm.runInNewContext(source, context);
-  const settle = async () => { for (let i = 0; i < 6; i++) await Promise.resolve(); };
+  const settle = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
   await settle();
   return {
-    nodes, document, updates, intervals, window: context.window,
+    nodes, document, updates, intervals, window: context.window, requests,
     ids: () => [...nodes['#products'].innerHTML.matchAll(/class="product-photo" href="https:\/\/meli\.la\/([^"]+)"/g)].map(match => match[1]),
     search: query => {
       nodes['#search'].value = query; nodes['#search'].dispatch('input');
-      for (const callback of timeouts.values()) callback(); timeouts.clear();
+      for (const [id, timer] of timeouts) if (timer.delay === 120) { timeouts.delete(id); timer.callback(); }
     },
     choose: category => { nodes['#category'].value = category; nodes['#category'].dispatch('change'); },
     refresh: async products => { data = snapshot(products); document.dispatch('visibilitychange'); await settle(); },
     failRefresh: async () => { fail = true; document.dispatch('visibilitychange'); await settle(); },
     advance: milliseconds => { now += milliseconds; },
+    runDueTimers: () => { for (const [id, timer] of timeouts) if (timer.due <= now) { timeouts.delete(id); timer.callback(); } },
+    releaseNetwork: async () => { blocked = false; pending.splice(0).forEach(resolve => resolve()); await settle(); },
+    pauseNetwork: () => { blocked = true; },
   };
 }
+
+const cacheKey = 'refri-catalogue:v1:./fixture.json';
+const epoch = Date.parse('2026-10-25T12:00:00Z');
+function memoryStorage(value) {
+  const values = new Map(value === undefined ? [] : [[cacheKey, typeof value === 'string' ? value : JSON.stringify(value)]]);
+  return { values, getItem: key => values.get(key) ?? null, setItem: (key, v) => values.set(key, v), removeItem: key => values.delete(key) };
+}
+const cached = (rows, receivedAt = epoch, generatedAt = epoch) => ({ receivedAt, data: { generatedAt: new Date(generatedAt).toISOString(), products: rows } });
+
+test('a recent cache displays products before the network finishes and is revalidated once', async () => {
+  const storage = memoryStorage(cached([item('old', 'Alicate antigo')]));
+  const ui = await setup([item('new', 'Alicate novo')], { storage, deferNetwork: true, initialTime: epoch + 10000 });
+  assert.deepEqual(ui.ids(), ['old']);
+  assert.equal(ui.requests.length, 1);
+  assert.equal(ui.requests[0].options.cache, 'no-cache');
+  assert.equal(ui.nodes['#result-count'].textContent, '1 de 1 produtos');
+  await ui.releaseNetwork();
+  assert.deepEqual(ui.ids(), ['new']);
+  assert.deepEqual(ui.updates.at(-1).map(p => p.id), ['new']);
+});
+
+test('cached reads do not renew their one minute lease and expire even while a request is pending', async () => {
+  const storage = memoryStorage(cached([item('old', 'Alicate antigo')]));
+  const ui = await setup([], { storage, deferNetwork: true, initialTime: epoch + 59000 });
+  assert.deepEqual(ui.ids(), ['old']);
+  assert.equal(JSON.parse(storage.getItem(cacheKey)).receivedAt, epoch);
+  ui.advance(1000); ui.runDueTimers();
+  assert.deepEqual(ui.ids(), []);
+  assert.deepEqual(ui.updates.at(-1), []);
+  assert.equal(storage.getItem(cacheKey), null);
+  await ui.releaseNetwork();
+});
+
+test('expired, future, corrupt and stale-generated caches never populate the page', async () => {
+  for (const value of [cached([item('old', 'Alicate')], epoch - 60000), cached([item('old', 'Alicate')], epoch + 1),
+    cached([item('old', 'Alicate')], epoch, epoch - 900001), '{invalid', {receivedAt:epoch, data:{products:null}}]) {
+    const ui = await setup([], {storage:memoryStorage(value), deferNetwork:true});
+    assert.deepEqual(ui.ids(), []);
+    await ui.releaseNetwork();
+  }
+});
+
+test('a snapshot near its freshness limit expires before the cache lease does', async () => {
+  const ui = await setup([], {storage:memoryStorage(cached([item('old', 'Alicate')],epoch,epoch-899000)),deferNetwork:true});
+  assert.deepEqual(ui.ids(), ['old']);
+  ui.advance(1001);ui.runDueTimers();
+  assert.deepEqual(ui.ids(), []);
+  await ui.releaseNetwork();
+});
+
+test('network errors invalidate stored snapshots and storage failures do not break live results', async () => {
+  const storage = memoryStorage();
+  const ui = await setup([item('live', 'Alicate')], {storage});
+  assert.ok(storage.getItem(cacheKey));
+  await ui.failRefresh();
+  assert.equal(storage.getItem(cacheKey), null);
+  const unavailable = {getItem(){throw Error('blocked');},setItem(){throw Error('quota');},removeItem(){throw Error('blocked');}};
+  const fallback = await setup([item('live', 'Alicate')], {storage:unavailable});
+  assert.deepEqual(fallback.ids(), ['live']);
+});
+
+test('preview and unsafe cached links cannot leak into published results', async () => {
+  const storage = memoryStorage(cached([item('bad', 'Alicate', undefined, {url:'javascript:alert(1)'})]));
+  const ui = await setup([], {storage,deferNetwork:true});
+  assert.deepEqual(ui.ids(), []);
+  await ui.releaseNetwork();
+  const previewStorage = memoryStorage(cached([item('old', 'Alicate')]));
+  const preview = await setup([], {storage:previewStorage,preview:true,deferNetwork:true});
+  assert.deepEqual(preview.ids(), []);
+  await preview.releaseNetwork();
+});
+
+test('unchanged search results keep the existing cards while refreshed prices and URLs update', async () => {
+  const rows = [item('pliers', 'Alicate universal')];
+  const ui = await setup(rows);
+  ui.search('alic');const writes = ui.nodes['#products'].htmlWrites;
+  ui.search('alica');ui.search('alicate');
+  assert.equal(ui.nodes['#products'].htmlWrites, writes);
+  await ui.refresh(rows);
+  assert.equal(ui.nodes['#products'].htmlWrites, writes);
+  await ui.refresh([item('pliers', 'Alicate universal', undefined, {price:42,url:'https://meli.la/new-link'})]);
+  assert.equal(ui.nodes['#products'].htmlWrites, writes + 1);
+  assert.match(ui.nodes['#products'].innerHTML,/42,00/);
+  assert.deepEqual(ui.ids(), ['new-link']);
+});
+
+test('unchanged background refresh preserves expanded pagination and the result count', async () => {
+  const rows = Array.from({length:30},(_,i)=>item(`item-${i}`,`Broca ${i}`));
+  const ui = await setup(rows);
+  ui.nodes['#products'].nextElement.dispatch('click');
+  const writes=ui.nodes['#products'].htmlWrites;
+  ui.pauseNetwork(); await ui.refresh(rows);
+  assert.equal(ui.nodes['#result-count'].textContent,'30 de 30 produtos');
+  await ui.releaseNetwork();
+  assert.equal(ui.ids().length,30);
+  assert.equal(ui.nodes['#products'].htmlWrites,writes);
+});
+
+test('the early catalogue request is consumed once instead of downloading the feed twice', async () => {
+  const preload={url:'./fixture.json', request:Promise.resolve({ok:true,json:async()=>cached([item('early','Alicate')]).data})};
+  const ui = await setup([], {preloaded:preload});
+  assert.deepEqual(ui.ids(),['early']);
+  assert.equal(ui.requests.length,0);
+  await ui.refresh([item('fresh','Alicate')]);
+  assert.deepEqual(ui.ids(),['fresh']);
+  assert.equal(ui.requests.length,1);
+});
+
+test('an early request failure or expired response body gets one normal retry', async () => {
+  for(const request of [Promise.reject(new Error('early timeout')),Promise.resolve({ok:true,json:async()=>{throw Error('body aborted');}})]){
+    request.catch(()=>{});
+    const ui=await setup([item('live','Alicate')],{preloaded:{url:'./fixture.json',request}});
+    assert.deepEqual(ui.ids(),['live']);
+    assert.equal(ui.requests.length,1);
+  }
+});
 
 const fixtures = [
   item('grinder', 'Esmerilhadeira angular 4 polegadas', 'Brocas e acessórios de corte'),

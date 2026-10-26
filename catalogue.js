@@ -23,23 +23,39 @@
   }
   const money = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   const settings = window.REFRI_CATALOGUE || {catalogueUrl:'./catalogue-public.json',preview:false,maxAgeMs:900000,refreshMs:300000};
-  let snapshotTime = 0, loading = false;
+  const cacheKey = `refri-catalogue:v1:${settings.catalogueUrl}`, cacheTtl = 60000;
+  let snapshotTime = 0, loading = false, cacheExpiresAt = 0, cacheTimer;
   function publishCatalogue(rows){window.REFRI_CURRENT_CATALOGUE=rows;document.dispatchEvent(new CustomEvent('catalogue:updated',{detail:{products:rows}}));}
   const escape = text => String(text ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeUrl = (value,image=false) => {try {const u=new URL(value);return u.protocol==='https:'&&(image ? /(^|\.)(supabase\.co|mlstatic\.com)$/.test(u.hostname):/(^|\.)(meli\.la|mercadolivre\.com\.br|mercadolibre\.com)$/.test(u.hostname))?u.href:null;}catch{return null;}};
   let products=[], filtered=[], category='all', shown=24, debounce;
+  let renderedMarkup = null, renderedCategories = null;
   const more=document.createElement('button');more.type='button';more.className='load-more';more.hidden=true;more.textContent='Mostrar mais produtos';grid.after(more);
   function render(){
-    grid.innerHTML=filtered.slice(0,shown).map(product=>{
+    const imageUrl=window.catalogueImageUrl||((url)=>url);
+    const markup=filtered.slice(0,shown).map(product=>{
       const title=product.title.length>96?product.title.slice(0,93).replace(/\s+\S*$/,'')+'…':product.title;
-      return `<article class="product"><a class="product-photo" href="${escape(product.url)}" target="_blank" rel="sponsored noopener noreferrer" aria-label="Ver ${escape(product.title)} no Mercado Livre"><img src="${escape(product.image)}" alt="${escape(product.title)}" width="400" height="400" loading="lazy" decoding="async"></a><div class="product-info"><p class="product-type">${escape(product.category)}</p><h3 title="${escape(product.title)}">${escape(title)}</h3><p class="catalogue-price">${product.price>0?money.format(product.price):'Consulte o preço'}<span>${product.price>0?'Preço cadastrado':'No anúncio'}</span></p><a class="product-link" href="${escape(product.url)}" target="_blank" rel="sponsored noopener noreferrer">Ver no Mercado Livre <span aria-hidden="true">↗</span></a></div></article>`;
+      const image=imageUrl(product.image,400);
+      const responsive=image!==product.image?` srcset="${[240,400,640].map(width=>`${escape(imageUrl(product.image,width))} ${width}w`).join(', ')}" sizes="(max-width: 600px) calc((100vw - 48px) / 2), (max-width: 900px) 30vw, 280px" data-original="${escape(product.image)}"`:'';
+      return `<article class="product"><a class="product-photo" href="${escape(product.url)}" target="_blank" rel="sponsored noopener noreferrer" aria-label="Ver ${escape(product.title)} no Mercado Livre"><img src="${escape(image)}"${responsive} alt="${escape(product.title)}" width="400" height="400" loading="lazy" decoding="async"></a><div class="product-info"><p class="product-type">${escape(product.category)}</p><h3 title="${escape(product.title)}">${escape(title)}</h3><p class="catalogue-price">${product.price>0?money.format(product.price):'Consulte o preço'}<span>${product.price>0?'Preço cadastrado':'No anúncio'}</span></p><a class="product-link" href="${escape(product.url)}" target="_blank" rel="sponsored noopener noreferrer">Ver no Mercado Livre <span aria-hidden="true">↗</span></a></div></article>`;
     }).join('');
-    grid.querySelectorAll('img').forEach(img=>img.addEventListener('error',()=>{img.hidden=true;const fallback=document.createElement('span');fallback.className='image-unavailable';fallback.textContent='Foto indisponível';img.parentElement.append(fallback);},{once:true}));
+    // Keep the actual image/card nodes when only the unfinished query or feed timestamp changes.
+    if(markup!==renderedMarkup){
+      grid.innerHTML=markup;renderedMarkup=markup;
+      grid.querySelectorAll('img').forEach(img=>{
+        let retried=false, failed=false;
+        img.addEventListener('error',()=>{
+          if(!retried&&img.dataset.original){retried=true;img.removeAttribute('srcset');img.src=img.dataset.original;return;}
+          if(failed)return;failed=true;img.hidden=true;
+          const fallback=document.createElement('span');fallback.className='image-unavailable';fallback.textContent='Foto indisponível';img.parentElement.append(fallback);
+        });
+      });
+    }
     count.textContent=filtered.length?`${Math.min(shown,filtered.length)} de ${filtered.length.toLocaleString('pt-BR')} produtos`:'Nenhum produto encontrado';
     more.hidden=shown>=filtered.length;empty.hidden=filtered.length>0;select.value=category;
     pills.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.filter===category)));
   }
-  function filter(){
+  function filter(resetPagination=true){
     const tokens=searchTokens(input.value), words=tokens.map(singular), last=words.length-1;
     function matchIndex(product,queryIndex,partial=false){
       return product.searchWords.findIndex((word,titleIndex)=>{
@@ -58,27 +74,81 @@
       // Keep genuine kits/accessories; titles naming the searched item first appear first.
       filtered.sort((a,b)=>matchIndex(a,0,partial&&last===0)-matchIndex(b,0,partial&&last===0));
     }
-    shown=24;render();
+    if(resetPagination)shown=24;render();
+  }
+  function forgetCache(){try{window.localStorage.removeItem(cacheKey);}catch{/* Storage may be blocked or unavailable. */}}
+  function clearCatalogue(message){
+    clearTimeout(cacheTimer);cacheExpiresAt=0;snapshotTime=0;products=[];filtered=[];renderedMarkup=null;
+    grid.innerHTML='';count.textContent='O catálogo está sendo atualizado.';more.hidden=true;empty.hidden=true;note.textContent=message;publishCatalogue([]);
+  }
+  function validateSnapshot(data){
+    if(!data||!Array.isArray(data.products))throw new Error('Catálogo inválido');
+    const time=Date.parse(data.generatedAt);
+    if(!settings.preview&&(!Number.isFinite(time)||Date.now()-time>=settings.maxAgeMs||time>Date.now()+60000))throw new Error('Catálogo desatualizado');
+    return time;
+  }
+  function applySnapshot(data){
+    snapshotTime=validateSnapshot(data);
+    const ids=new Set();products=data.products.flatMap(p=>{
+      if(!p||typeof p.title!=='string')return[];
+      const url=safeUrl(p.url),image=safeUrl(p.image,true);
+      if(!url||!image||!p.title||ids.has(p.id))return[];
+      ids.add(p.id);const category=typeof p.category==='string'&&p.category?p.category:window.catalogueCategory(p.title),tokens=searchTokens(p.title);
+      return[{...p,url,image,category,price:Number(p.price),searchTokens:tokens,searchWords:tokens.map(singular)}];
+    });
+    const categories=[...new Set(products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    if(category!=='all'&&!categories.includes(category))category='all';
+    const categoryKey=JSON.stringify(categories);
+    if(categoryKey!==renderedCategories){
+      select.innerHTML='<option value="all">Todas as categorias</option>'+categories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('');
+      const quick=['Bombas de vácuo','Bombas de limpeza','Serras-copo','Manifolds e manômetros','Multímetros e alicates amperímetros'].filter(c=>categories.includes(c));
+      pills.innerHTML='<button type="button" data-filter="all" aria-pressed="true">Todos</button>'+quick.map(c=>`<button type="button" data-filter="${escape(c)}" aria-pressed="false">${escape(c)}</button>`).join('');
+      renderedCategories=categoryKey;
+    }
+    const date=new Date(data.generatedAt);note.textContent=`Base consultada em ${Number.isNaN(date.getTime())?'data não informada':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Isso não indica atualização dos preços. Confira o valor e a disponibilidade no anúncio.`;
+    document.querySelector('.results-meta>span').textContent='Produtos ativos no Supabase';filter(false);publishCatalogue(products);
+  }
+  function expireRestoredCache(){
+    if(cacheExpiresAt&&Date.now()>=cacheExpiresAt){forgetCache();clearCatalogue('Aguardando uma base recente para exibir os produtos.');}
+  }
+  function restoreCache(){
+    if(settings.preview)return;
+    try{
+      const entry=JSON.parse(window.localStorage.getItem(cacheKey));
+      if(!entry)return;
+      if(!Number.isFinite(entry.receivedAt)||entry.receivedAt>Date.now()||Date.now()-entry.receivedAt>=cacheTtl)throw new Error('Cache vencido');
+      const time=validateSnapshot(entry.data);
+      applySnapshot(entry.data);
+      // Reading a cached response never renews its lease or the feed's freshness deadline.
+      cacheExpiresAt=Math.min(entry.receivedAt+cacheTtl,time+settings.maxAgeMs);
+      cacheTimer=setTimeout(expireRestoredCache,cacheExpiresAt-Date.now());
+    }catch{forgetCache();}
+  }
+  function rememberSnapshot(){
+    if(settings.preview)return;
+    const rows=products.map(({id,title,image,url,price,discount,category})=>({id,title,image,url,price,discount,category}));
+    try{window.localStorage.setItem(cacheKey,JSON.stringify({receivedAt:Date.now(),data:{generatedAt:new Date(snapshotTime).toISOString(),products:rows}}));}catch{/* Live results work even without storage. */}
+  }
+  async function readResponse(request){
+    const response=await request;
+    if(!response.ok)throw new Error('Catálogo indisponível');
+    return response.json();
   }
   async function load(){
     if (loading) return;
     loading = true;
-    grid.setAttribute('aria-busy','true');count.textContent='Carregando catálogo conferido…';
+    expireRestoredCache();
+    grid.setAttribute('aria-busy','true');if(!snapshotTime)count.textContent='Carregando catálogo conferido…';
     try{
-      const response=await fetch(settings.catalogueUrl,{cache:'no-cache',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Catálogo indisponível');
-      const data=await response.json();if(!Array.isArray(data.products))throw new Error('Catálogo inválido');
-      snapshotTime = Date.parse(data.generatedAt);
-      if (!settings.preview && (!Number.isFinite(snapshotTime) || Date.now()-snapshotTime>settings.maxAgeMs || snapshotTime>Date.now()+60000)) throw new Error('Catálogo desatualizado');
-      const ids=new Set();products=data.products.flatMap(p=>{const url=safeUrl(p.url),image=safeUrl(p.image,true);if(!url||!image||!p.title||ids.has(p.id))return[];ids.add(p.id);const category=p.category||window.catalogueCategory(p.title),tokens=searchTokens(p.title);return[{...p,url,image,category,price:Number(p.price),searchTokens:tokens,searchWords:tokens.map(singular)}];});
-      const categories=[...new Set(products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-      if(category!=='all'&&!categories.includes(category))category='all';
-      select.innerHTML='<option value="all">Todas as categorias</option>'+categories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('');
-      const quick=['Bombas de vácuo','Bombas de limpeza','Serras-copo','Manifolds e manômetros','Multímetros e alicates amperímetros'].filter(c=>categories.includes(c));
-      pills.innerHTML='<button type="button" data-filter="all" aria-pressed="true">Todos</button>'+quick.map(c=>`<button type="button" data-filter="${escape(c)}" aria-pressed="false">${escape(c)}</button>`).join('');
-      const date=new Date(data.generatedAt);note.textContent=`Base consultada em ${Number.isNaN(date.getTime())?'data não informada':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Isso não indica atualização dos preços. Confira o valor e a disponibilidade no anúncio.`;
-      document.querySelector('.results-meta>span').textContent='Produtos ativos no Supabase';filter();
-      publishCatalogue(products);
-    }catch{products=[];filtered=[];grid.innerHTML='';count.textContent='O catálogo está sendo atualizado.';more.hidden=true;empty.hidden=true;note.textContent='Não foi possível obter uma base recente. Tente novamente em alguns minutos.';publishCatalogue([]);}
+      const early=window.REFRI_CATALOGUE_PRELOAD;delete window.REFRI_CATALOGUE_PRELOAD;
+      const request=()=>readResponse(fetch(settings.catalogueUrl,{cache:'no-cache',signal:AbortSignal.timeout(15000)}));
+      // A slow page can outlive the early request's timeout. Retry it once, including body read failures.
+      let data;
+      if(early?.url===settings.catalogueUrl){try{data=await readResponse(early.request);}catch{data=await request();}}
+      else data=await request();
+      applySnapshot(data);
+      clearTimeout(cacheTimer);cacheExpiresAt=0;rememberSnapshot();
+    }catch{forgetCache();clearCatalogue('Não foi possível obter uma base recente. Tente novamente em alguns minutos.');}
     finally{grid.setAttribute('aria-busy','false');loading=false;}
   }
   input.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(filter,120);});
@@ -99,10 +169,10 @@
     });
     document.querySelectorAll('.hero-join,.final-join').forEach(cta => observer.observe(cta));
   } else dock.classList.add('is-visible');
-  load();
+  restoreCache();load();
   if (!settings.preview) {
     setInterval(()=>{if(!document.hidden)load();},settings.refreshMs);
-    setInterval(()=>{if(snapshotTime && Date.now()-snapshotTime>settings.maxAgeMs){products=[];filtered=[];grid.innerHTML='';more.hidden=true;empty.hidden=true;count.textContent='O catálogo está sendo atualizado.';note.textContent='Aguardando uma base recente para exibir os produtos.';publishCatalogue([]);}},60000);
+    setInterval(()=>{expireRestoredCache();if(snapshotTime&&Date.now()-snapshotTime>=settings.maxAgeMs){forgetCache();clearCatalogue('Aguardando uma base recente para exibir os produtos.');}},60000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
   }
 })();

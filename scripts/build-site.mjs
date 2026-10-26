@@ -8,7 +8,7 @@ export const SITE_URL = 'https://sorefrigeracao.com';
 export const CATALOGUE_URL = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/refri-catalogue/catalogue.json';
 export const PUBLIC_FILES = Object.freeze([
   'index.html', 'styles.css', 'mobile-refinements.css', 'carousel.css',
-  'catalogue.js', 'categories.js', 'carousel.js', 'seo-pages.css',
+  'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js', 'seo-pages.css',
   'assets/produto_149.jpg', 'assets/produto_263.jpg',
   'assets/produto_1980.jpg', 'assets/produto_2164.jpg',
   'floating-join.css', 'assets/favicon.svg', 'assets/favicon.ico',
@@ -49,14 +49,17 @@ export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 
   const content = new Map(await Promise.all(PUBLIC_FILES.map(async name => [name, await fs.readFile(path.join(root, name))])));
   const original = content.get('index.html').toString('utf8');
   const invite = invitationContract(original);
-  const html = production ? productionHTML(original) : original;
+  // catalogue.js consumes this same request. Start before CSS/scripts, without a second preload fetch.
+  const catalogueURLLiteral = JSON.stringify(CATALOGUE_URL).replace(/</g, '\\u003c');
+  const catalogueHints = `<link rel="preconnect" href="${new URL(CATALOGUE_URL).origin}" crossorigin><script id="catalogue-preload-script">(()=>{try{if(typeof fetch!=='function'||typeof AbortSignal==='undefined'||typeof AbortSignal.timeout!=='function')return;const url=${catalogueURLLiteral},request=fetch(url,{cache:'no-cache',signal:AbortSignal.timeout(15000)});request.catch(()=>{});window.REFRI_CATALOGUE_PRELOAD={url,request};}catch{}})();</script>`;
+  const html = (production ? productionHTML(original) : original).replace('<head>', `<head>${catalogueHints}`);
   if (invitationContract(html) !== invite) throw new Error('O build alterou o convite gerenciado pelo publicador.');
   if (Buffer.byteLength(html) >= 250_000) throw new Error('HTML excede o limite do publicador de convites.');
   if (!production && !html.includes('noindex,nofollow')) throw new Error('A prévia precisa continuar noindex.');
   for (const [, asset] of html.matchAll(/(?:src|href)="(assets\/[^"?#]+)"/g)) {
     if (!PUBLIC_FILES.includes(asset)) throw new Error(`Asset fora da lista pública: ${asset}`);
   }
-  const browserOptions = { catalogueUrl: CATALOGUE_URL, preview: !production, maxAgeMs: 15 * 60_000, refreshMs: 5 * 60_000 };
+  const browserOptions = { catalogueUrl: CATALOGUE_URL, preview: !production, maxAgeMs: 15 * 60_000, refreshMs: 5 * 60_000, imageOptimization: ['production', 'deploy-preview', 'branch-deploy'].includes(context) };
   const serverOptions = { snapshotURL: CATALOGUE_URL, production, base: production ? SITE_URL : '' };
   // The resolved target above is exactly <project>/dist; source files are untouched.
   if (outputStat) await fs.rm(output, { recursive: true });

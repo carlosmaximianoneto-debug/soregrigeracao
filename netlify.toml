@@ -9,6 +9,9 @@
 [functions]
   node_bundler = "esbuild"
 
+[images]
+  remote_images = ['^https://xlwiwxaghbkdwbtwagwo\.supabase\.co/storage/v1/object/public/imagens/.*$', '^https://http2\.mlstatic\.com/.*$']
+
 # The build embeds the shared category rules into an imported server module.
 # No broad included_files glob is needed; operations and source snapshots stay private.
 
