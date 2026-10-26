@@ -10,7 +10,7 @@
   const position = carousel.querySelector('.pump-position');
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const order = new Intl.Collator('pt-BR', { numeric: true });
-  let slides = [], index = 0, userPaused = reduced.matches, hovered = false, inView = true, timer = null, start = null, pausedOnPress = null;
+  let slides = [], index = 0, userPaused = reduced.matches, hovered = false, inView = true, timer = null, start = null, pausedOnPress = null, catalogueKey = '';
 
   const normal = text => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^[^a-z0-9]+/, '');
   function safeURL(value, image = false) {
@@ -45,7 +45,11 @@
     const stage = element('div', 'product-stage');
     const image = element('img');
     image.width = 800; image.height = 800; image.loading = 'lazy'; image.decoding = 'async'; image.draggable = false;
-    image.addEventListener('error', () => { image.hidden = true; });
+    image.addEventListener('error', () => {
+      if (image.dataset.optimized === 'true' && image.dataset.fallback !== 'true') {
+        image.dataset.fallback = 'true'; image.srcset = ''; image.src = image.dataset.originalSrc;
+      } else image.hidden = true;
+    });
     stage.append(element('span', 'stage-label', 'BOMBAS DE VÁCUO PARA REFRIGERAÇÃO'), image);
     const caption = element('figcaption'), copy = element('div'), link = element('a');
     copy.append(element('strong'), element('span', '', 'Confira os detalhes e o preço no anúncio.'));
@@ -57,11 +61,28 @@
   function updateSlide(slide, product) {
     slide.querySelector('strong').textContent = product.title;
     const image = slide.querySelector('img');
-    if (image.src !== product.image) { image.hidden = false; image.src = product.image; }
+    if (image.dataset.originalSrc !== product.image) {
+      image.hidden = false; image.dataset.originalSrc = product.image;
+      image.dataset.loaded = ''; image.dataset.fallback = ''; image.dataset.optimized = '';
+      image.removeAttribute('src'); image.removeAttribute('srcset');
+    }
     image.alt = product.title;
     const link = slide.querySelector('a');
     link.href = product.url;
     link.setAttribute('aria-label', `Ver ${product.title} no Mercado Livre`);
+  }
+  function loadImage(image, active) {
+    image.loading = active ? 'eager' : 'lazy';
+    image.fetchPriority = active ? 'high' : 'low';
+    if (image.dataset.loaded === 'true') return;
+    const original = image.dataset.originalSrc;
+    const source = window.catalogueImageUrl?.(original, 800) || original;
+    image.dataset.optimized = String(source !== original);
+    if (source !== original) {
+      image.sizes = '(max-width: 600px) calc(100vw - 40px), 500px';
+      image.srcset = [400, 800, 1200].map(width => `${window.catalogueImageUrl(original, width)} ${width}w`).join(', ');
+    }
+    image.dataset.loaded = 'true'; image.src = source;
   }
   function render() {
     carousel.setAttribute('aria-busy', 'false');
@@ -74,7 +95,10 @@
       slide.setAttribute('aria-label', `${i + 1} de ${slides.length}`);
       slide.setAttribute('aria-hidden', String(i !== index));
       slide.inert = i !== index;
-      if (i === index) slide.querySelector('img').loading = 'eager';
+      // Assign sources only as slides approach the active one. Native lazy loading
+      // alone may fetch many horizontally adjacent images on initial render.
+      if (i === index || i === (index + 1) % slides.length || i === (index + slides.length - 1) % slides.length) loadImage(slide.querySelector('img'), i === index);
+      else slide.querySelector('img').fetchPriority = 'low';
     });
   }
   function schedule() {
@@ -92,10 +116,14 @@
     userPaused = true; render(); schedule();
   }
   function updateCatalogue(event) {
+    const products = currentPumps(event.detail?.products), nextKey = JSON.stringify(products);
+    // Price is not rendered here. Compare only the validated fields this carousel uses.
+    if (nextKey === catalogueKey) return;
+    catalogueKey = nextKey;
     const activeId = slides[index]?.dataset.productId;
     const previousSlides = new Map(slides.map(slide => [slide.dataset.productId, slide]));
     const focusInside = track.contains(document.activeElement);
-    const nextSlides = currentPumps(event.detail?.products).map(product => {
+    const nextSlides = products.map(product => {
       const slide = previousSlides.get(product.id) || makeSlide(product);
       updateSlide(slide, product);
       return slide;

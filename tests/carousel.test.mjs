@@ -14,6 +14,7 @@ class Element {
   replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
   setAttribute(key, value) { this.attributes[key] = String(value); }
   getAttribute(key) { return this.attributes[key]; }
+  removeAttribute(key) { delete this.attributes[key]; delete this[key]; }
   addEventListener(type, listener) { (this.events[type] ||= []).push(listener); }
   dispatch(type, event = {}) { for (const listener of this.events[type] || []) listener({ target: this, preventDefault() {}, ...event }); }
   contains(node) { return node === this || this.children.some(child => child.contains(node)); }
@@ -28,7 +29,7 @@ class Element {
   focus() { this.focused = true; }
 }
 
-function setup({ reducedMotion = false, initial } = {}) {
+function setup({ reducedMotion = false, initial, optimized = false } = {}) {
   const document = new Element('document'), carousel = new Element('section', 'pump-carousel');
   const viewport = new Element('div', 'pump-viewport'), track = new Element('div', 'pump-track');
   const controls = new Element('div', 'pump-controls'), pause = new Element('button', 'pump-pause');
@@ -38,6 +39,7 @@ function setup({ reducedMotion = false, initial } = {}) {
   const media = new Element(); media.matches = reducedMotion;
   const timers = new Map(); let timerId = 0;
   const context = { document, window: { REFRI_CATALOGUE: { preview: false }, matchMedia: () => media }, URL, console, setInterval: callback => { timers.set(++timerId, callback); return timerId; }, clearInterval: id => timers.delete(id) };
+  if (optimized) context.window.catalogueImageUrl = (url, width) => `/.netlify/images?url=${encodeURIComponent(url)}&w=${width}`;
   if (initial) context.window.REFRI_CURRENT_CATALOGUE = initial;
   vm.runInNewContext(categories, context);
   vm.runInNewContext(source, context);
@@ -103,4 +105,53 @@ test('keeps automatic motion paused for reduced motion and supports manual next 
 test('does not render unsafe destinations or accessories mislabeled as pumps', () => {
   const ui = setup(); ui.update([pump(1), pump(2, 'Vacuômetro Para Bomba De Vácuo', { category: 'Bombas de vácuo' }), pump(3, undefined, { url: 'javascript:alert(1)' }), pump(4, undefined, { image: 'https://untrusted.invalid/image.jpg' })]);
   assert.deepEqual(ui.ids(), ['1']);
+});
+
+test('initial carousel exposes only current and adjacent image sources, while keeping all 54 pumps', () => {
+  const ui = setup({ initial: Array.from({ length: 54 }, (_, i) => pump(i + 1)) });
+  const sourced = () => ui.track.children.filter(slide => slide.querySelector('img').src).map(slide => slide.dataset.productId);
+  assert.equal(ui.ids().length, 54);
+  assert.deepEqual(sourced(), ['1', '2', '54']);
+  assert.equal(ui.active().querySelector('img').loading, 'eager');
+  assert.equal(ui.active().querySelector('img').fetchPriority, 'high');
+  ui.next.dispatch('click');
+  assert.deepEqual(sourced(), ['1', '2', '3', '54']);
+  for (let i = 0; i < 53; i++) ui.next.dispatch('click');
+  assert.equal(ui.active().dataset.productId, '1');
+  assert.equal(sourced().length, 54);
+});
+
+test('same catalogue preserves active nodes, image sources and the pending rotation timer', () => {
+  const rows = [pump(1), pump(2), pump(3), pump(4)];
+  const ui = setup({ initial: rows });
+  [...ui.timers.values()][0]();
+  const active = ui.active(), image = active.querySelector('img'), timer = [...ui.timers.keys()][0];
+  ui.update(rows.map(row => ({ ...row })));
+  assert.equal(ui.active(), active);
+  assert.equal(ui.active().querySelector('img'), image);
+  assert.equal([...ui.timers.keys()][0], timer);
+});
+
+test('optimized images provide responsive sources and fall back to the original once on failure', () => {
+  const ui = setup({ initial: [pump(1)], optimized: true });
+  const image = ui.active().querySelector('img');
+  assert.match(image.src, /^\/\.netlify\/images\?/);
+  assert.match(image.srcset, /400w/); assert.match(image.srcset, /800w/);
+  image.dispatch('error');
+  assert.equal(image.src, pump(1).image);
+  assert.equal(image.srcset, ''); assert.equal(image.hidden, false);
+  image.dispatch('error'); assert.equal(image.hidden, true);
+  ui.update([pump(1)]); assert.equal(image.hidden, true);
+  ui.update([pump(1, undefined, { image: 'https://http2.mlstatic.com/new.jpg' })]);
+  assert.equal(image.hidden, false); assert.match(image.src, /new.jpg/);
+});
+
+test('a changed offscreen image remains deferred until navigation reaches its neighborhood', () => {
+  const rows = Array.from({ length: 8 }, (_, i) => pump(i + 1));
+  const ui = setup({ initial: rows });
+  ui.update(rows.map(row => row.id === 5 ? { ...row, image: 'https://http2.mlstatic.com/new5.jpg' } : row));
+  const image = ui.track.children.find(slide => slide.dataset.productId === '5').querySelector('img');
+  assert.equal(image.src, undefined);
+  for (let i = 0; i < 3; i++) ui.next.dispatch('click');
+  assert.equal(image.src, 'https://http2.mlstatic.com/new5.jpg');
 });
