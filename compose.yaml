@@ -1,0 +1,35 @@
+name: sorefrigeracao-site-prod
+services:
+  web:
+    image: ${REFRI_SITE_IMAGE:-sorefrigeracao-site:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sorefrigeracao-site-web
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    env_file:
+      - .runtime.env
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=256
+      REFRI_SITE_REVISION: ${REFRI_SITE_REVISION:-local}
+    ports:
+      - "127.0.0.1:3190:8080"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 128
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

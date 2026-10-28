@@ -40,7 +40,7 @@ export function productionHTML(source) {
 
 export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 'local-preview' } = {}) {
   root = path.resolve(root);
-  const production = context === 'production';
+  const production = context === 'production' || context === 'vps-production';
   const output = path.resolve(root, 'dist');
   if (output !== path.join(root, 'dist') || !output.startsWith(`${root}${path.sep}`)) throw new Error('Saída fora do diretório autorizado.');
   const outputStat = await fs.lstat(output).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
@@ -59,7 +59,8 @@ export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 
   for (const [, asset] of html.matchAll(/(?:src|href)="(assets\/[^"?#]+)"/g)) {
     if (!PUBLIC_FILES.includes(asset)) throw new Error(`Asset fora da lista pública: ${asset}`);
   }
-  const browserOptions = { catalogueUrl: CATALOGUE_URL, preview: !production, maxAgeMs: 15 * 60_000, refreshMs: 5 * 60_000, imageOptimization: ['production', 'deploy-preview', 'branch-deploy'].includes(context) };
+  const imageProvider = context === 'vps-production' ? 'vps' : ['production', 'deploy-preview', 'branch-deploy'].includes(context) ? 'netlify' : 'original';
+  const browserOptions = { catalogueUrl: CATALOGUE_URL, preview: !production, maxAgeMs: 15 * 60_000, refreshMs: 5 * 60_000, imageOptimization: imageProvider !== 'original', imageProvider };
   const serverOptions = { snapshotURL: CATALOGUE_URL, production, base: production ? SITE_URL : '', invitationURL: invite };
   // The resolved target above is exactly <project>/dist; source files are untouched.
   if (outputStat) await fs.rm(output, { recursive: true });
