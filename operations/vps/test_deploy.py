@@ -156,6 +156,17 @@ class DeployTests(unittest.TestCase):
             with self.subTest(key=key, value=value), self.assertRaises(ValueError):
                 self.d.validate_builder_limits({**limits,key:value})
 
+    def test_builder_driver_uses_supported_text_output_and_rejects_ambiguity(self):
+        self.assertTrue(callable(getattr(self.d, 'validate_builder_driver', None)),
+                        'Buildx text driver verification is not implemented')
+        output = 'Name:          sorefrigeracao-site-builder\nDriver:        docker-container\n\nNodes:\nName: builder0\n'
+        self.d.validate_builder_driver(output)
+        for invalid in ['Name: builder\nDriver: docker\n', 'Driver: remote\n',
+                        'Nodes:\n', 'Driver: docker-container\nDriver: docker\n',
+                        'Error: Driver: docker-container\n', 'Driver: docker-container extra\n']:
+            with self.subTest(output=invalid), self.assertRaises(ValueError):
+                self.d.validate_builder_driver(invalid)
+
 
 if __name__ == '__main__':
     unittest.main()

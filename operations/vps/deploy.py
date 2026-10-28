@@ -94,6 +94,14 @@ def validate_builder_limits(config):
         raise ValueError('Dedicated build container limits do not match the approved budget')
 
 
+def validate_builder_driver(output):
+    # Buildx inspect does not support --format on the deployed CLI. Parse only
+    # its top-level Driver field, never a substring in diagnostics/node details.
+    drivers = re.findall(r'^Driver:[ \t]*([^\r\n]*)', output, flags=re.MULTILINE)
+    if len(drivers) != 1 or drivers[0].strip() != 'docker-container':
+        raise ValueError('Dedicated builder must use the docker-container driver')
+
+
 def validate_policy(policy):
     if not isinstance(policy, dict) or set(policy) != {'Dockerfile', 'compose.yaml'}:
         raise ValueError('Policy must pin exactly Dockerfile and compose.yaml')
@@ -292,9 +300,8 @@ class HostOperations:
         runtime_link.symlink_to(self.runtime)
 
     def verify_builder(self):
-        driver = self.run(['docker', 'buildx', 'inspect', BUILDER, '--format', '{{.Driver}}'])
-        if driver != 'docker-container':
-            raise DeployError('dedicated_builder_driver_mismatch')
+        output = self.run(['docker', 'buildx', 'inspect', BUILDER])
+        validate_builder_driver(output)
         config = self.run(['docker', 'inspect', '--format', '{{json .HostConfig}}', BUILDER_CONTAINER])
         validate_builder_limits(json.loads(config))
 
