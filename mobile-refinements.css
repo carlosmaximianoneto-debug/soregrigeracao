@@ -8,12 +8,17 @@ body:has(.hero){background:var(--paper)}
 .load-more[hidden]{display:none}
 .catalogue-price{margin-top:auto;padding-top:18px;font-size:20px;font-weight:700;line-height:1.4}
 .catalogue-price span{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:3px}
+.catalogue-price .catalogue-discount{width:fit-content;padding:3px 6px;margin-top:6px;border-radius:4px;background:#e6f4ea;color:#176536;font-size:12px;font-weight:700;line-height:1.4}
 .image-unavailable{height:100%;display:grid;place-items:center;color:var(--muted);font-size:13px}
 .static-catalogue-link{margin-top:24px;font-size:13px;line-height:1.7}
 .static-catalogue-link a{min-height:44px;display:inline-flex;align-items:center;color:#254e60}
 .catalogue-preview .header,.catalogue-preview .hero-band,.catalogue-preview .scope-strip,.catalogue-preview .how,.catalogue-preview .questions,.catalogue-preview .transparency,.catalogue-preview .final,.catalogue-preview .footer{display:none}
 .catalogue-preview .catalogue{padding-top:28px;padding-bottom:100px}
-.product-link{min-height:44px}
+.product .product-link{min-height:48px;width:100%;justify-content:center;gap:8px;margin-top:16px;padding:10px 8px;border-radius:8px;background:#ffe600;color:var(--navy);font-size:13px;font-weight:700;line-height:1.4;text-align:center;text-decoration:none;transition:background-color .15s ease}
+.product .product-link:hover{background:#f0d800;text-decoration:none}
+.product .product-link:active{background:#e5cc00}
+.product .product-link:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
+.product .product-link>span{flex-shrink:0;font-size:18px;line-height:1}
 .filters{gap:8px}
 .filters button{min-height:44px;font-size:12px}
 .header nav a{display:flex;align-items:center;min-height:44px}
@@ -61,7 +66,7 @@ body:has(.hero){background:var(--paper)}
   .product-type{font-size:11px;line-height:1.5}
   .product h3{font-size:14px;line-height:1.5}
   .spec{font-size:12px;line-height:1.6}
-  .product-link{font-size:12px;line-height:1.5;min-height:48px;align-items:center}
+  .product .product-link{font-size:12px}
   .product-link span{font-size:19px}
   .product-info{padding:14px 12px 8px}
   .catalogue-note{font-size:12px;line-height:1.8}

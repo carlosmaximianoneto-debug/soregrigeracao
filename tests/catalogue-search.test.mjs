@@ -423,3 +423,27 @@ test('stale feed is rejected before search indexing', async () => {
   const ui = await setup(fixtures, { generatedAt: '2020-01-01T00:00:00Z' });
   ui.search('broca'); assert.deepEqual(ui.ids(), []); assert.deepEqual(ui.updates.at(-1), []);
 });
+
+test('cards show only valid recorded discounts paired with a usable price, without inventing old prices', async () => {
+  const rows = [item('sale', 'Alicate', undefined, {price:160, discount:20}),
+    ...[0, null, undefined, -5, 100, 101, 12.5, '20', '<img src=x>'].map((discount,i)=>item(`invalid-${i}`, 'Chave', undefined, {discount})),
+    item('no-price', 'Broca', undefined, {price:0, discount:30})];
+  const ui = await setup(rows);
+  const html = ui.nodes['#products'].innerHTML;
+  assert.equal((html.match(/class="catalogue-discount"/g)||[]).length,1);
+  assert.match(html,/20% OFF/);
+  assert.doesNotMatch(html,/30% OFF|Preço cadastrado|<del\b|<s\b|<img src=x>/);
+  assert.match(html,/Consulte o preço/);
+  assert.match(html,/data-track-event="affiliate_click" data-product-id="sale"/);
+});
+
+test('recorded discounts survive the short cache and disappear when the feed removes them', async () => {
+  const row = item('sale', 'Alicate', undefined, {price:160, discount:20});
+  const storage=memoryStorage();
+  await setup([row],{storage});
+  const ui=await setup([{...row,discount:0}],{storage,deferNetwork:true,initialTime:epoch+1000});
+  assert.match(ui.nodes['#products'].innerHTML,/20% OFF/);
+  await ui.releaseNetwork();
+  assert.doesNotMatch(ui.nodes['#products'].innerHTML,/catalogue-discount|% OFF/);
+  assert.deepEqual(ui.ids(),['sale']);
+});
