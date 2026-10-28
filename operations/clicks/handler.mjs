@@ -3,6 +3,7 @@ const MAX_BYTES = 512;
 const KEYS = ['event_type', 'page_type', 'placement', 'product_id'];
 const RULES = Object.freeze({
   home_card: ['home', 'affiliate_click'],
+  home_card_filtered: ['home', 'affiliate_click'],
   home_carousel: ['home', 'affiliate_click'],
   home_hero: ['home', 'whatsapp_click'],
   home_footer: ['home', 'whatsapp_click'],
@@ -12,6 +13,9 @@ const RULES = Object.freeze({
   product_whatsapp: ['product', 'whatsapp_click'],
   collection_card: [['catalogue', 'category'], 'product_view_click'],
   related_card: ['product', 'product_view_click'],
+  page_load: [['home', 'product', 'category', 'catalogue'], 'page_view'],
+  search_filter: ['home', 'filter_use'],
+  category_filter: ['home', 'filter_use'],
 });
 
 export function validateClick(input) {
@@ -22,7 +26,9 @@ export function validateClick(input) {
   const [pages, event] = RULES[placement];
   if (!(Array.isArray(pages) ? pages : [pages]).includes(page_type) || event_type !== event) return null;
   if (!Number.isSafeInteger(product_id) || product_id < 0 || product_id > 2_147_483_647) return null;
-  const noProduct = placement.startsWith('home_') && event_type === 'whatsapp_click';
+  const noProduct = event_type === 'page_view'
+    ? page_type !== 'product'
+    : event_type === 'filter_use' || (placement.startsWith('home_') && event_type === 'whatsapp_click');
   if (noProduct ? product_id !== 0 : product_id === 0) return null;
   return { event_type, product_id, placement, page_type };
 }
@@ -79,3 +85,4 @@ export function createClickHandler({ record, now = Date.now, maxPerMinute = 300 
     try { await record(input); return response(204); } catch { return response(503); }
   };
 }
+

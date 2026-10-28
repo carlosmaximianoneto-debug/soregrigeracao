@@ -34,6 +34,37 @@ begin
   if public.refri_record_site_click('affiliate_click',2147483647,'home_card','home') then
     raise exception 'Unknown product should not be counted';
   end if;
+  if not public.refri_record_site_click('page_view',0,'page_load','home')
+     or not public.refri_record_site_click('page_view',0,'page_load','category')
+     or not public.refri_record_site_click('page_view',0,'page_load','catalogue')
+     or not public.refri_record_site_click('page_view',v_id,'page_load','product') then
+    raise exception 'Valid page views should be counted independently';
+  end if;
+  begin
+    perform public.refri_record_site_click('page_view',0,'page_load','product');
+    raise exception 'Product view without product ID was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.refri_record_site_click('page_view',v_id,'page_load','home');
+    raise exception 'Home view with product ID was accepted';
+  exception when check_violation then null;
+  end;
+  if not public.refri_record_site_click('filter_use',0,'search_filter','home')
+     or not public.refri_record_site_click('filter_use',0,'category_filter','home')
+     or not public.refri_record_site_click('affiliate_click',v_id,'home_card_filtered','home') then
+    raise exception 'Valid filter use and filtered-product clicks should be counted';
+  end if;
+  begin
+    perform public.refri_record_site_click('filter_use',v_id,'search_filter','home');
+    raise exception 'Filter use with product ID was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.refri_record_site_click('affiliate_click',0,'home_card_filtered','home');
+    raise exception 'Filtered-product click without a product ID was accepted';
+  exception when check_violation then null;
+  end;
 end;
 $$;
 set local role anon;
@@ -45,3 +76,4 @@ set local request.jwt.claims = '{"role":"authenticated","aal":"aal1"}';
 select count(*) as unauthenticated_admin_visible_rows from public.refri_site_click_daily;
 reset role;
 rollback;
+

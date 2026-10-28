@@ -57,6 +57,8 @@
   }
   function filter(resetPagination=true){
     const tokens=searchTokens(input.value), words=tokens.map(singular), last=words.length-1;
+    grid.dataset.searchFiltered=String(words.length>0);
+    grid.dataset.categoryFiltered=String(category!=='all');
     function matchIndex(product,queryIndex,partial=false){
       return product.searchWords.findIndex((word,titleIndex)=>{
         const matches=partial
@@ -176,3 +178,4 @@
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
   }
 })();
+

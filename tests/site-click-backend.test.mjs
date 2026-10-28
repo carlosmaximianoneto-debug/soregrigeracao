@@ -17,6 +17,50 @@ test('only bounded known event fields and coherent product placements are accept
   assert.deepEqual(validateClick({ event_type: 'whatsapp_click', product_id: 0, placement: 'home_hero', page_type: 'home' }), { event_type: 'whatsapp_click', product_id: 0, placement: 'home_hero', page_type: 'home' });
 });
 
+test('accepts page views independently from clicks and requires product IDs only for product pages', () => {
+  for (const page_type of ['home', 'category', 'catalogue', 'product']) {
+    const view = { event_type: 'page_view', product_id: page_type === 'product' ? 42 : 0, placement: 'page_load', page_type };
+    assert.deepEqual(validateClick(view), view);
+  }
+});
+
+test('rejects inconsistent view IDs, click placements and visitor fields', () => {
+  const view = { event_type: 'page_view', product_id: 0, placement: 'page_load', page_type: 'home' };
+  for (const override of [
+    { product_id: 42 }, { page_type: 'product' }, { placement: 'home_card' },
+    { event_type: 'affiliate_click' }, { visitor_id: 'person' }, { page_type: 'unknown' },
+  ]) assert.equal(validateClick({ ...view, ...override }), null);
+  assert.equal(validateClick({ ...view, page_type: 'category', product_id: 42 }), null);
+  assert.equal(validateClick({ ...view, page_type: 'catalogue', product_id: 42 }), null);
+});
+
+test('collector preserves distinct page-view and click event types without adding dimensions', async () => {
+  const records = [];
+  const handler = createClickHandler({ record: async value => { records.push(value); return true; } });
+  const view = { event_type: 'page_view', product_id: 42, placement: 'page_load', page_type: 'product' };
+  assert.equal((await handler(request(view))).status, 204);
+  assert.equal((await handler(request(event))).status, 204);
+  assert.deepEqual(records, [view, event]);
+});
+
+test('accepts aggregate search and category use only on the home without a product or text', () => {
+  for (const placement of ['search_filter', 'category_filter']) {
+    const filter = { event_type: 'filter_use', product_id: 0, placement, page_type: 'home' };
+    assert.deepEqual(validateClick(filter), filter);
+    assert.equal(validateClick({ ...filter, product_id: 42 }), null);
+    assert.equal(validateClick({ ...filter, page_type: 'category' }), null);
+    assert.equal(validateClick({ ...filter, search_term: 'private query' }), null);
+  }
+});
+
+test('distinguishes filtered-product affiliate clicks while retaining normal clicks', () => {
+  assert.deepEqual(validateClick({ ...event, placement: 'home_card_filtered' }), { ...event, placement: 'home_card_filtered' });
+  assert.deepEqual(validateClick(event), event);
+  assert.equal(validateClick({ ...event, placement: 'home_card_filtered', product_id: 0 }), null);
+  assert.equal(validateClick({ ...event, placement: 'home_card_filtered', page_type: 'product' }), null);
+  assert.equal(validateClick({ ...event, placement: 'home_card_filtered', event_type: 'filter_use' }), null);
+});
+
 test('collector counts a validated click once and returns no visitor information', async () => {
   const records = [];
   const handler = createClickHandler({ record: async value => { records.push(value); return true; } });
@@ -95,3 +139,4 @@ test('relay is disabled in previews, without credentials and on upstream failure
   assert.equal((await createSiteClickRelay({ apiKey: 'key', fetchImpl })(request())).status, 503);
   assert.equal(requests, 1);
 });
+
