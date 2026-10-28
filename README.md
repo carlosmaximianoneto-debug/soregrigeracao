@@ -8,7 +8,7 @@ O carrossel mostra as bombas de vácuo presentes no catálogo atual. Títulos, f
 
 ## Desenvolvimento
 
-Requer Node.js 22. Execute `npm run build` para gerar a pasta pública `dist/`.
+Requer Node.js 22. Execute `npm ci` e `npm run build` para gerar a pasta pública `dist/`. A produção roda em um contêiner isolado na VPS, com publicação a partir da branch `main` e rollback por versão.
 
 Testes do carrossel: `node --test tests/carousel.test.mjs`.
 

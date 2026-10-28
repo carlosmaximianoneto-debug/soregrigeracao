@@ -7,6 +7,9 @@
   // Keep thumbnail URLs stable for CDN reuse; version the source URL when replacing a photo.
   window.catalogueImageUrl = (original, width = 400) => {
     if (!window.REFRI_CATALOGUE?.imageOptimization || !publishedHost.test(window.location?.hostname || '')) return original;
+    // VPS serves the same portable contract so already cached thumbnail URLs and
+    // Netlify rollback both work. Unknown providers keep the original fallback.
+    if (!['netlify', 'vps'].includes(window.REFRI_CATALOGUE.imageProvider || 'netlify')) return original;
     try {
       const source = new URL(original);
       const allowed = source.origin === publicStorage && source.pathname.startsWith('/storage/v1/object/public/imagens/')

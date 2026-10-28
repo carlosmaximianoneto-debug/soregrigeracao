@@ -1,0 +1,32 @@
+[Unit]
+Description=Publish the approved So Refrigeracao main revision
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+ConditionPathExists=/etc/sorefrigeracao-site/deploy-policy.json
+ConditionPathExists=/srv/sorefrigeracao-site/shared/runtime.env
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /usr/local/lib/sorefrigeracao-deploy/deploy.py
+WorkingDirectory=/srv/sorefrigeracao-site
+TimeoutStartSec=900
+UMask=0022
+Nice=10
+CPUWeight=10
+IOWeight=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/srv/sorefrigeracao-site
+# The Docker socket is intentionally used only by this reviewed root-owned publisher.
+# The web container never receives the socket or directories belonging to other services.
+
