@@ -51,7 +51,7 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
     if (/%|\/\.|\\|\/\//.test(route)) return missing();
     const publicRoute = route.startsWith('/seo/') ? route.slice(4) : route;
     if (publicRoute === '/robots.txt') {
-      if (route !== '/robots.txt' || requestURL.search) return reply('', 301, { Location: '/robots.txt' });
+      if (route !== '/robots.txt') return reply('', 301, { Location: '/robots.txt' });
       const robots = options.production ? `User-agent: *\nAllow: /\nSitemap: ${options.base}/sitemap.xml\n` : 'User-agent: *\nDisallow: /\n';
       return reply(robots, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
     }
@@ -60,7 +60,7 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       const renderer = await readCurrentCatalogue();
       if (publicRoute === '/sitemap.xml') {
         if (!renderer.sitemap) return reply(message('Página não encontrada', 'O mapa do site fica disponível após a configuração do domínio.'), 404);
-        if (route !== '/sitemap.xml' || requestURL.search) return reply('', 301, { Location: '/sitemap.xml' });
+        if (route !== '/sitemap.xml') return reply('', 301, { Location: '/sitemap.xml' });
         return reply(renderer.sitemap, 200, { 'Content-Type': 'application/xml; charset=utf-8' });
       }
       let normalRoute = publicRoute.replace(/\/index\.html$/, '/').replace(/\/?$/, '/');
@@ -72,8 +72,9 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       }
       const html = renderer.render(normalRoute);
       if (html) {
-        // The target exists in the fresh catalogue. Never redirect a raw path.
-        if (route !== normalRoute || requestURL.search) return reply('', 301, { Location: normalRoute });
+        // Only normalize paths: Netlify forwards query strings on redirects.
+        // Redirecting a canonical path for its query would create a loop.
+        if (route !== normalRoute) return reply('', 301, { Location: normalRoute });
         return reply(html);
       }
       const renamed = renderer.replacementRoute(normalRoute);

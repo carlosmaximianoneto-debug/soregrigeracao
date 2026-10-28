@@ -152,11 +152,52 @@ test('sitemap and robots advertise only clean canonical URLs and old endpoints r
   for (const [old, target] of [
     ['/seo/sitemap.xml', '/sitemap.xml'], ['/seo/sitemap.xml?x=1', '/sitemap.xml'],
     ['/seo/robots.txt', '/robots.txt'], ['/seo/robots.txt?x=1', '/robots.txt'],
-    ['/sitemap.xml?x=1', '/sitemap.xml'], ['/robots.txt?x=1', '/robots.txt'],
   ]) {
     const response = await request(old);
     assert.equal(response.status, 301, old);
     assert.equal(response.headers.get('location'), target);
+  }
+});
+
+test('canonical paths with query parameters return 200 and keep metadata free from query values', async () => {
+  const { request } = fixture();
+  for (const path of ['/catalogo/', '/catalogo/pagina/2/', '/categorias/brocas/', '/produtos/broca-de-concreto-1-1/']) {
+    const response = await request(path + '?utm_source=whatsapp&redirect=https%3A%2F%2Fevil.example%2F');
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get('location'), null);
+    const html = await response.text();
+    assert.ok(html.includes(`<link rel="canonical" href="${base}${path}">`));
+    assert.ok(!html.includes('evil.example'));
+    assert.ok(!html.includes('utm_source'));
+  }
+  for (const path of ['/sitemap.xml', '/robots.txt']) {
+    const response = await request(path + '?source=legacy');
+    assert.equal(response.status, 200, path);
+    assert.equal(response.headers.get('location'), null);
+    assert.ok(!(await response.text()).includes('source=legacy'));
+  }
+});
+
+test('legacy redirects terminate when Netlify passes query parameters to their destination', async () => {
+  const { request } = fixture();
+  for (const [from, expected] of [
+    ['/seo/catalogo/index.html?source=legacy', '/catalogo/'],
+    ['/seo/produtos/nome-antigo-1/?utm_source=whatsapp', '/produtos/broca-de-concreto-1-1/'],
+    ['/seo/robots.txt?source=legacy', '/robots.txt'],
+    ['/seo/sitemap.xml?source=legacy', '/sitemap.xml'],
+  ]) {
+    const first = await request(from);
+    assert.equal(first.status, 301);
+    assert.equal(first.headers.get('location'), expected);
+    // Netlify retains incoming query strings on 301 responses. The destination
+    // must terminate with 200 even when those parameters are reapplied by hosting.
+    const hostedTarget = first.headers.get('location') + new URL(base + from).search;
+    const final = await request(hostedTarget);
+    assert.equal(final.status, 200, hostedTarget);
+    assert.equal(final.headers.get('location'), null, 'must not redirect to itself');
+    const head = await request(hostedTarget, 'HEAD');
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), '');
   }
 });
 
