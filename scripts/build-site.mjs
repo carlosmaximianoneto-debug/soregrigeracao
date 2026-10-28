@@ -60,7 +60,7 @@ export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 
     if (!PUBLIC_FILES.includes(asset)) throw new Error(`Asset fora da lista pública: ${asset}`);
   }
   const browserOptions = { catalogueUrl: CATALOGUE_URL, preview: !production, maxAgeMs: 15 * 60_000, refreshMs: 5 * 60_000, imageOptimization: ['production', 'deploy-preview', 'branch-deploy'].includes(context) };
-  const serverOptions = { snapshotURL: CATALOGUE_URL, production, base: production ? SITE_URL : '' };
+  const serverOptions = { snapshotURL: CATALOGUE_URL, production, base: production ? SITE_URL : '', invitationURL: invite };
   // The resolved target above is exactly <project>/dist; source files are untouched.
   if (outputStat) await fs.rm(output, { recursive: true });
   await fs.mkdir(output, { recursive: true });
