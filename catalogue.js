@@ -37,7 +37,8 @@
       const title=product.title.length>96?product.title.slice(0,93).replace(/\s+\S*$/,'')+'…':product.title;
       const image=imageUrl(product.image,400);
       const responsive=image!==product.image?` srcset="${[240,400,640].map(width=>`${escape(imageUrl(product.image,width))} ${width}w`).join(', ')}" sizes="(max-width: 600px) calc((100vw - 48px) / 2), (max-width: 900px) 30vw, 280px" data-original="${escape(product.image)}"`:'';
-      return `<article class="product"><a class="product-photo" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer" aria-label="Ver ${escape(product.title)} no Mercado Livre"><img src="${escape(image)}"${responsive} alt="${escape(product.title)}" width="400" height="400" loading="lazy" decoding="async"></a><div class="product-info"><p class="product-type">${escape(product.category)}</p><h3 title="${escape(product.title)}">${escape(title)}</h3><p class="catalogue-price">${product.price>0?money.format(product.price):'Consulte o preço'}<span>${product.price>0?'Preço cadastrado':'No anúncio'}</span></p><a class="product-link" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer">Ver no Mercado Livre <span aria-hidden="true">↗</span></a></div></article>`;
+      const discountBadge=product.discount?`<span class="catalogue-discount" title="Confirme o desconto no anúncio.">${product.discount}% OFF</span>`:'';
+      return `<article class="product"><a class="product-photo" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer" aria-label="Ver ${escape(product.title)} no Mercado Livre"><img src="${escape(image)}"${responsive} alt="${escape(product.title)}" width="400" height="400" loading="lazy" decoding="async"></a><div class="product-info"><p class="product-type">${escape(product.category)}</p><h3 title="${escape(product.title)}">${escape(title)}</h3><p class="catalogue-price">${product.price>0?money.format(product.price):'Consulte o preço'}${product.price>0?discountBadge:'<span>No anúncio</span>'}</p><a class="product-link" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer">Ver no Mercado Livre <span aria-hidden="true">↗</span></a></div></article>`;
     }).join('');
     // Keep the actual image/card nodes when only the unfinished query or feed timestamp changes.
     if(markup!==renderedMarkup){
@@ -96,7 +97,8 @@
       const url=safeUrl(p.url),image=safeUrl(p.image,true);
       if(!url||!image||!p.title||ids.has(p.id))return[];
       ids.add(p.id);const category=typeof p.category==='string'&&p.category?p.category:window.catalogueCategory(p.title),tokens=searchTokens(p.title);
-      return[{...p,url,image,category,price:Number(p.price),searchTokens:tokens,searchWords:tokens.map(singular)}];
+      const price=Number(p.price),discount=Number.isFinite(price)&&price>0&&Number.isInteger(p.discount)&&p.discount>0&&p.discount<100?p.discount:null;
+      return[{...p,url,image,category,price,discount,searchTokens:tokens,searchWords:tokens.map(singular)}];
     });
     const categories=[...new Set(products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
     if(category!=='all'&&!categories.includes(category))category='all';
@@ -107,7 +109,7 @@
       pills.innerHTML='<button type="button" data-filter="all" aria-pressed="true">Todos</button>'+quick.map(c=>`<button type="button" data-filter="${escape(c)}" aria-pressed="false">${escape(c)}</button>`).join('');
       renderedCategories=categoryKey;
     }
-    const date=new Date(data.generatedAt);note.textContent=`Base consultada em ${Number.isNaN(date.getTime())?'data não informada':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Isso não indica atualização dos preços. Confira o valor e a disponibilidade no anúncio.`;
+    const date=new Date(data.generatedAt);note.textContent=`Base consultada em ${Number.isNaN(date.getTime())?'data não informada':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Isso não indica atualização dos preços e descontos. Confira o valor e a disponibilidade no anúncio.`;
     document.querySelector('.results-meta>span').textContent='Produtos ativos no Supabase';filter(false);publishCatalogue(products);
   }
   function expireRestoredCache(){
