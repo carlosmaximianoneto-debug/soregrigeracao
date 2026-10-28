@@ -47,13 +47,13 @@ const products = source.products.map((row, index) => {
   if (seen.has(id)) throw new Error(`ID repetido no snapshot: ${id}`);
   seen.add(id);
   const category = categoryContext.window.catalogueCategory(title);
-  const route = `/seo/produtos/${slug(title).slice(0, 110).replace(/-$/, '') || 'produto'}-${id}/`;
+  const route = `/produtos/${slug(title).slice(0, 110).replace(/-$/, '') || 'produto'}-${id}/`;
   const price = typeof row.price === 'number' && Number.isFinite(row.price) && row.price > 0 ? row.price : null;
   return { id, title, url, image, category, route, price };
 });
 const collator = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
 products.sort((a, b) => collator.compare(a.title, b.title) || collator.compare(a.id, b.id));
-const categories = [...new Set(products.map(p => p.category))].sort(collator.compare).map(name => ({ name, route: `/seo/categorias/${slug(name)}/`, products: products.filter(p => p.category === name) }));
+const categories = [...new Set(products.map(p => p.category))].sort(collator.compare).map(name => ({ name, route: `/categorias/${slug(name)}/`, products: products.filter(p => p.category === name) }));
 const guidance = {
   'Bombas de vácuo': 'Compare a vazão em CFM, o número de estágios e a tensão informados no anúncio. Confira também as conexões e os acessórios incluídos.',
   'Bombas de limpeza': 'Confira a pressão de trabalho, a tensão e os acessórios incluídos. Verifique se mangueira, reservatório e bicos atendem ao seu uso.',
@@ -71,7 +71,7 @@ const guidance = {
   'Tubos e drenos': 'Compare diâmetro, espessura, comprimento e material. Confira as conexões necessárias para o serviço.',
 };
 const categoryAdvice = name => guidance[name] || 'Confira as medidas, a compatibilidade e os itens incluídos no anúncio. Compare as informações do fabricante com a necessidade do serviço.';
-const catalogueRoute = '/seo/catalogo/';
+const catalogueRoute = '/catalogo/';
 const snowflake = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#91dce5"/><g fill="none" stroke="#10232d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 9v46M12 20l40 24M12 44l40-24M24 13l8 8 8-8M24 51l8-8 8 8M12 29l10-3-2-10M52 35l-10 3 2 10M20 48l2-10-10-3M44 16l-2 10 10 3"/></g></svg>';
 const breadcrumbHTML = crumbs => `<nav class="breadcrumbs" aria-label="Caminho da página"><ol>${crumbs.map((c, i) => `<li>${i === crumbs.length - 1 ? `<span aria-current="page">${escapeHTML(c.name)}</span>` : `<a href="${escapeHTML(c.route)}">${escapeHTML(c.name)}</a>`}</li>`).join('')}</ol></nav>`;
 const breadcrumbData = crumbs => ({ '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: absolute(c.route) })) });
@@ -137,7 +137,7 @@ for (const item of products) routeMap.set(item.route, { kind: 'product', item })
 const routes = [...routeMap.keys()];
 return {
   products, categories, routes, options, snapshotDate,
-  robots: options.production ? 'User-agent: *\nAllow: /\nSitemap: ' + options.base + '/seo/sitemap.xml\n' : 'User-agent: *\nDisallow: /\n',
+  robots: options.production ? 'User-agent: *\nAllow: /\nSitemap: ' + options.base + '/sitemap.xml\n' : 'User-agent: *\nDisallow: /\n',
   sitemap: options.production ? '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + ['/', ...routes].map(route => '<url><loc>' + escapeHTML(absolute(route)) + '</loc></url>').join('') + '</urlset>\n' : null,
   render(route) {
     const entry = routeMap.get(route);
@@ -145,10 +145,11 @@ return {
     return entry.kind === 'product' ? renderProduct(entry.item) : collection(entry.name, entry.route, entry.list, entry.isCategory, entry.page);
   },
   replacementRoute(route) {
+    const currentRoute = route.startsWith('/seo/') ? route.slice(4) : route;
     // This mixed category was split into brocas, discos, esmerilhadeiras and serras.
-    if (/^\/seo\/categorias\/brocas-e-acessorios-de-corte\/(?:pagina\/[1-9]\d*\/)?$/.test(route)) return catalogueRoute;
-    if (!route.startsWith('/seo/produtos/')) return null;
-    return products.find(item => route.endsWith('-' + item.id + '/'))?.route || null;
+    if (/^\/categorias\/brocas-e-acessorios-de-corte\/(?:pagina\/[1-9]\d*\/)?$/.test(currentRoute)) return catalogueRoute;
+    if (!/^\/produtos\/[a-zA-Z0-9_-]+\/$/.test(currentRoute)) return null;
+    return products.find(item => currentRoute.endsWith('-' + item.id + '/'))?.route || null;
   },
 };
 }

@@ -11,7 +11,7 @@ const RESPONSE_HEADERS = {
   'Netlify-CDN-Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff',
 };
-const message = (title, description) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${title} | Só Refrigeração</title><link rel="stylesheet" href="/seo-pages.css"></head><body><main class="wrap collection-heading"><p class="eyebrow">SÓ REFRIGERAÇÃO</p><h1>${title}</h1><p class="lead">${description}</p><a class="text-link" href="/seo/catalogo/">Voltar ao catálogo</a></main></body></html>`;
+const message = (title, description) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${title} | Só Refrigeração</title><link rel="stylesheet" href="/seo-pages.css"></head><body><main class="wrap collection-heading"><p class="eyebrow">SÓ REFRIGERAÇÃO</p><h1>${title}</h1><p class="lead">${description}</p><a class="text-link" href="/catalogo/">Voltar ao catálogo</a></main></body></html>`;
 
 export function createSeoHandler({ snapshotURL, categorySource, base = '', production = false, invitationURL, fetchImpl = fetch, now = Date.now } = {}) {
   const options = validateSeoOptions({ production, base, invitationURL });
@@ -47,18 +47,34 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
     const headers = { ...RESPONSE_HEADERS, ...(!options.production ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}) };
     const reply = (body, status = 200, extra = {}) => new Response(request.method === 'HEAD' ? null : body, { status, headers: { ...headers, ...extra } });
     if (!['GET', 'HEAD'].includes(request.method)) return reply('Método não permitido.', 405, { Allow: 'GET, HEAD' });
-    if (route === '/robots.txt' || route === '/seo/robots.txt') {
-      const robots = options.production ? `User-agent: *\nAllow: /\nSitemap: ${options.base}/seo/sitemap.xml\n` : 'User-agent: *\nDisallow: /\n';
+    const missing = () => reply(message('Página não encontrada', 'Use o catálogo para encontrar uma ferramenta.'), 404);
+    if (/%|\/\.|\\|\/\//.test(route)) return missing();
+    const publicRoute = route.startsWith('/seo/') ? route.slice(4) : route;
+    if (publicRoute === '/robots.txt') {
+      if (route !== '/robots.txt') return reply('', 301, { Location: '/robots.txt' });
+      const robots = options.production ? `User-agent: *\nAllow: /\nSitemap: ${options.base}/sitemap.xml\n` : 'User-agent: *\nDisallow: /\n';
       return reply(robots, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
     }
-    if (!route.startsWith('/seo/') || /%|\/\.|\\/.test(route)) return reply(message('Página não encontrada', 'Use o catálogo para encontrar uma ferramenta.'), 404);
+    if (publicRoute !== '/sitemap.xml' && !/^\/(?:produtos|categorias|catalogo)(?:\/|$)/.test(publicRoute)) return missing();
     try {
       const renderer = await readCurrentCatalogue();
-      if (route === '/seo/sitemap.xml') return renderer.sitemap ? reply(renderer.sitemap, 200, { 'Content-Type': 'application/xml; charset=utf-8' }) : reply(message('Página não encontrada', 'O mapa do site fica disponível após a configuração do domínio.'), 404);
-      const normalRoute = route.replace(/index\.html$/, '').replace(/\/?$/, '/');
+      if (publicRoute === '/sitemap.xml') {
+        if (!renderer.sitemap) return reply(message('Página não encontrada', 'O mapa do site fica disponível após a configuração do domínio.'), 404);
+        if (route !== '/sitemap.xml') return reply('', 301, { Location: '/sitemap.xml' });
+        return reply(renderer.sitemap, 200, { 'Content-Type': 'application/xml; charset=utf-8' });
+      }
+      let normalRoute = publicRoute.replace(/\/index\.html$/, '/').replace(/\/?$/, '/');
+      const pagination = normalRoute.match(/^(\/catalogo\/|\/categorias\/[a-z0-9-]+\/)pagina\/(0*[1-9]\d*)\/$/);
+      if (pagination) {
+        const page = Number(pagination[2]);
+        if (!Number.isSafeInteger(page)) return missing();
+        normalRoute = page === 1 ? pagination[1] : `${pagination[1]}pagina/${page}/`;
+      }
       const html = renderer.render(normalRoute);
       if (html) {
-        if (route !== normalRoute || requestURL.search) return reply('', 301, { Location: normalRoute });
+        // Only normalize paths: Netlify forwards query strings on redirects.
+        // Redirecting a canonical path for its query would create a loop.
+        if (route !== normalRoute) return reply('', 301, { Location: normalRoute });
         return reply(html);
       }
       const renamed = renderer.replacementRoute(normalRoute);
@@ -86,4 +102,4 @@ export default async function handler(request) {
 }
 
 // preferStatic false is essential: generated preview HTML must never shadow live data.
-export const config = { path: ['/seo/*', '/robots.txt'], preferStatic: false };
+export const config = { path: ['/produtos', '/produtos/*', '/categorias', '/categorias/*', '/catalogo', '/catalogo/*', '/seo', '/seo/*', '/sitemap.xml', '/robots.txt'], preferStatic: false };

@@ -15,12 +15,12 @@ test('product pages link to the configured group; collections and pagination foc
   for (const route of renderer.routes) {
     const html = renderer.render(route);
     const links = [...html.matchAll(/<a class="group-join-button" href="([^"]+)"/g)];
-    assert.equal(links.length, route.startsWith('/seo/produtos/') ? 1 : 0, route);
-    if (!route.startsWith('/seo/produtos/')) continue;
+    assert.equal(links.length, route.startsWith('/produtos/') ? 1 : 0, route);
+    if (!route.startsWith('/produtos/')) continue;
     assert.equal(links[0][1], invitationURL, route);
     assert.match(html, /Entrar no grupo grátis/);
     assert.match(html, /Sem custo para entrar\. Saia quando quiser\./);
-    if (route.startsWith('/seo/produtos/')) {
+    if (route.startsWith('/produtos/')) {
       assert.ok(html.indexOf('Ver oferta no Mercado Livre') < html.indexOf('group-join-button'));
       assert.match(html, /rel="sponsored noopener noreferrer"/);
     }
@@ -38,7 +38,7 @@ test('missing invitation uses the managed homepage entry; invalid external targe
 
 test('collections omit invitations and keep buying guidance after the product list', () => {
   const renderer = createSeoRenderer(snapshot, { invitationURL }, categorySource);
-  const html = renderer.render('/seo/categorias/brocas/');
+  const html = renderer.render('/categorias/brocas/');
   assert.match(html, /class="collection-intro"/);
   assert.ok(html.indexOf('class="collection-advice"') > html.indexOf('class="product-grid"'));
   assert.match(html, /O que conferir antes de comprar/);
@@ -53,8 +53,8 @@ test('the live Netlify handler forwards the group and keeps HEAD / missing produ
   const response = await handler(new Request('https://example.com' + productRoute));
   assert.equal(response.status, 200);
   assert.ok((await response.text()).includes(`href="${invitationURL}"`));
-  const head = await handler(new Request('https://example.com/seo/catalogo/', {method: 'HEAD'}));
+  const head = await handler(new Request('https://example.com/catalogo/', {method: 'HEAD'}));
   assert.equal(head.status, 200);
   assert.equal(await head.text(), '');
-  assert.equal((await handler(new Request('https://example.com/seo/produtos/missing-999/'))).status, 404);
+  assert.equal((await handler(new Request('https://example.com/produtos/missing-999/'))).status, 404);
 });

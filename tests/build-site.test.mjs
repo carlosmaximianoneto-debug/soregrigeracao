@@ -18,6 +18,8 @@ for (const context of ['production', 'deploy-preview', 'local-preview']) {
       const result = await buildSite({ root, context });
       const html = await fs.readFile(path.join(root, 'dist/index.html'), 'utf8');
       const source = await fs.readFile(new URL('../index.html', import.meta.url), 'utf8');
+      assert.ok(html.includes('href="/catalogo/"'), 'the homepage links directly to the clean catalogue URL');
+      assert.ok(!/href="\/seo\//.test(html), 'public navigation must not link to legacy SEO-prefixed URLs');
       const head = html.split('</head>')[0];
       assert.equal(invitationContract(html), invitationContract(source));
       const serverConfig = await fs.readFile(path.join(root, 'netlify/generated/catalogue-config.mjs'), 'utf8');
