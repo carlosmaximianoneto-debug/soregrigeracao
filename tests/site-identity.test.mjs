@@ -22,7 +22,7 @@ test('business identity is visible and matches production structured data',()=>{
 test('SEO pages refer to the same publisher and link to visible company details',()=>{
   const renderer=createSeoRenderer({products:[],generatedAt:new Date().toISOString()},
     {production:true,base:'https://sorefrigeracao.com'},'window.catalogueCategory = () => "Brocas";');
-  const html=renderer.render('/seo/catalogo/');
+  const html=renderer.render('/catalogo/');
   assert.equal(graph(html).find(x=>x['@type']==='Organization').taxID,publisher.taxID);
   assert.ok(html.includes('href="/#sobre"'));
   const footer = html.match(/<footer[\s\S]*?<\/footer>/)[0];

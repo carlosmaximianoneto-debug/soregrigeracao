@@ -5,10 +5,10 @@ const snapshot = {generatedAt: new Date().toISOString(), products: []};
 const renderer = createSeoRenderer(snapshot, {}, 'window.catalogueCategory = () => "Brocas";');
 
 test('old mixed cutting category directs visitors to the current catalogue', () => {
-  for (const route of ['/seo/categorias/brocas-e-acessorios-de-corte/', '/seo/categorias/brocas-e-acessorios-de-corte/pagina/2/']) {
-    assert.equal(renderer.replacementRoute(route), '/seo/catalogo/');
+  for (const route of ['/categorias/brocas-e-acessorios-de-corte/', '/categorias/brocas-e-acessorios-de-corte/pagina/2/']) {
+    assert.equal(renderer.replacementRoute(route), '/catalogo/');
   }
 });
 test('unknown category routes do not redirect', () => {
-  assert.equal(renderer.replacementRoute('/seo/categorias/desconhecida/'), null);
+  assert.equal(renderer.replacementRoute('/categorias/desconhecida/'), null);
 });
