@@ -13,8 +13,8 @@ const RESPONSE_HEADERS = {
 };
 const message = (title, description) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${title} | Só Refrigeração</title><link rel="stylesheet" href="/seo-pages.css"></head><body><main class="wrap collection-heading"><p class="eyebrow">SÓ REFRIGERAÇÃO</p><h1>${title}</h1><p class="lead">${description}</p><a class="text-link" href="/seo/catalogo/">Voltar ao catálogo</a></main></body></html>`;
 
-export function createSeoHandler({ snapshotURL, categorySource, base = '', production = false, fetchImpl = fetch, now = Date.now } = {}) {
-  const options = validateSeoOptions({ production, base });
+export function createSeoHandler({ snapshotURL, categorySource, base = '', production = false, invitationURL, fetchImpl = fetch, now = Date.now } = {}) {
+  const options = validateSeoOptions({ production, base, invitationURL });
   const endpoint = new URL(snapshotURL);
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.hash || endpoint.search) throw new Error('O JSON público deve usar URL HTTPS sem credenciais ou parâmetros.');
   if (typeof categorySource !== 'string') throw new Error('categories.js deve estar incluído no pacote da função.');

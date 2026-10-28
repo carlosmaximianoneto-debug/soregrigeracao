@@ -9,4 +9,13 @@
 
 .empty-catalogue{grid-column:1/-1;padding:35px 0;font-size:14px;line-height:1.8;color:var(--muted)}
 
+.group-join{margin-top:26px;padding-top:24px;border-top:1px solid var(--line)}
+.group-join-title{font-size:14px;font-weight:600;line-height:1.5}
+.group-join-button{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:60px;margin-top:12px;padding:17px 20px;border-radius:7px;background:#5cde98;color:var(--navy);font-size:16px;font-weight:700;line-height:1.4;text-align:center;text-decoration:none}
+.group-join-button:hover{background:#79e5ab}
+.group-join-button:active{background:#49ca84}
+.group-join-button svg{flex:0 0 24px}
+.group-join-note{margin-top:10px;font-size:11px;line-height:1.7;color:var(--muted);text-align:center}
+.collection-heading .group-join{max-width:440px}
+
 .desktop-category-list{display:none}.category-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;font:700 14px Inter,Arial,sans-serif;letter-spacing:0;padding:10px 0 17px}.category-heading>span{font-size:11px;font-weight:500;color:var(--muted)}@media(min-width:861px){.desktop-category-list{display:block}.category-sidebar>details{display:none}}

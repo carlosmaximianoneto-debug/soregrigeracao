@@ -20,6 +20,9 @@ for (const context of ['production', 'deploy-preview', 'local-preview']) {
       const source = await fs.readFile(new URL('../index.html', import.meta.url), 'utf8');
       const head = html.split('</head>')[0];
       assert.equal(invitationContract(html), invitationContract(source));
+      const serverConfig = await fs.readFile(path.join(root, 'netlify/generated/catalogue-config.mjs'), 'utf8');
+      const serverOptions = JSON.parse(serverConfig.match(/Object\.freeze\(([\s\S]*?)\);/)[1]);
+      assert.equal(serverOptions.invitationURL, invitationContract(source), 'SEO pages follow the managed group invitation');
       assert.ok(result.publicFiles.includes('catalogue-images.js'));
       assert.ok(html.indexOf('src="catalogue-images.js"') < html.indexOf('src="catalogue.js"'));
       assert.match(head, /rel="preconnect" href="https:\/\/xlwiwxaghbkdwbtwagwo\.supabase\.co" crossorigin/);

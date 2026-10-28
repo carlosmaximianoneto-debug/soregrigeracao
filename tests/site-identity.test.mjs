@@ -25,4 +25,7 @@ test('SEO pages refer to the same publisher and link to visible company details'
   const html=renderer.render('/seo/catalogo/');
   assert.equal(graph(html).find(x=>x['@type']==='Organization').taxID,publisher.taxID);
   assert.ok(html.includes('href="/#sobre"'));
+  const footer = html.match(/<footer[\s\S]*?<\/footer>/)[0];
+  for (const value of Object.values(publisher)) assert.ok(footer.includes(value), 'company details are visible on generated pages');
+  assert.ok(footer.includes(`mailto:${publisher.email}`));
 });
