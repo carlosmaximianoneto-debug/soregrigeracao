@@ -10,12 +10,13 @@ const snapshot = { generatedAt: new Date().toISOString(), products: Array.from({
   url: `https://meli.la/example${index}`, image: 'https://http2.mlstatic.com/example.jpg',
 })) };
 
-test('every product, category and pagination page links to the configured group without JavaScript', () => {
+test('product pages link to the configured group; collections and pagination focus on products', () => {
   const renderer = createSeoRenderer(snapshot, { invitationURL }, categorySource);
   for (const route of renderer.routes) {
     const html = renderer.render(route);
     const links = [...html.matchAll(/<a class="group-join-button" href="([^"]+)"/g)];
-    assert.equal(links.length, 1, route);
+    assert.equal(links.length, route.startsWith('/seo/produtos/') ? 1 : 0, route);
+    if (!route.startsWith('/seo/produtos/')) continue;
     assert.equal(links[0][1], invitationURL, route);
     assert.match(html, /Entrar no grupo grátis/);
     assert.match(html, /Sem custo para entrar\. Saia quando quiser\./);
@@ -35,11 +36,21 @@ test('missing invitation uses the managed homepage entry; invalid external targe
   }
 });
 
+test('collections omit invitations and keep buying guidance after the product list', () => {
+  const renderer = createSeoRenderer(snapshot, { invitationURL }, categorySource);
+  const html = renderer.render('/seo/categorias/brocas/');
+  assert.match(html, /class="collection-intro"/);
+  assert.ok(html.indexOf('class="collection-advice"') > html.indexOf('class="product-grid"'));
+  assert.match(html, /O que conferir antes de comprar/);
+  assert.equal((html.match(/class="group-join-button"/g) || []).length, 0);
+});
+
 test('the live Netlify handler forwards the group and keeps HEAD / missing product behavior', async () => {
   const handler = createSeoHandler({ snapshotURL: 'https://example.com/catalogue.json',
     invitationURL, categorySource, fetchImpl: async () => new Response(JSON.stringify(snapshot)),
   });
-  const response = await handler(new Request('https://example.com/seo/catalogo/'));
+  const productRoute = createSeoRenderer(snapshot, { invitationURL }, categorySource).products[0].route;
+  const response = await handler(new Request('https://example.com' + productRoute));
   assert.equal(response.status, 200);
   assert.ok((await response.text()).includes(`href="${invitationURL}"`));
   const head = await handler(new Request('https://example.com/seo/catalogo/', {method: 'HEAD'}));
