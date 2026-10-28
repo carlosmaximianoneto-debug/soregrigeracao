@@ -10,6 +10,12 @@ A função Edge mantém `verify_jwt: true` e confere a credencial exata do relay
 
 Não são criados IDs de visitante, sessões, cookies, impressão digital, eventos brutos nem histórico individual. A aplicação não copia IP, User-Agent, Referer ou cookies para o banco ou do Netlify para a Edge. Os provedores de infraestrutura podem manter logs técnicos próprios, conforme suas políticas: não prometer que nenhuma infraestrutura processa IP.
 
+## Visualizações e uso de filtros
+
+O contrato também distingue `page_view` com posição `page_load`: ID de produto positivo somente na página individual; zero nas páginas inicial, categoria e catálogo. Uma visualização não é pessoa única nem clique. `filter_use` registra somente uso da busca ou da seleção de categoria (`search_filter`/`category_filter`), sempre com produto zero e página inicial. Não recebe o texto pesquisado nem a categoria escolhida. Quando existe filtro ativo, um clique no anúncio usa `affiliate_click` com posição `home_card_filtered`; o clique comum continua `home_card`. Isso informa uma ação feita após filtrar, sem associar jornadas entre páginas ou identificar pessoas.
+
+Em banco existente, aplicar **somente** `add-page-views.sql` para ampliar as três constraints. A migração não apaga nem altera contagens anteriores, a chave primária, a RPC ou permissões. A coluna legada `clicks` guarda a contagem de cada `event_type`; relatórios devem separar visualizações, filtros e cliques. Depois, publicar o handler da Edge e o relay Netlify atualizados antes de habilitar os novos eventos no frontend.
+
 ## Arquivos e deploy
 
 - `schema.sql`: cria exclusivamente `public.refri_site_click_daily`, sua policy e RPC. Aplicar via migration Supabase após revisão.
@@ -41,3 +47,4 @@ Desabilitar `REFRI_CLICK_ENABLED` em produção e/ou remover o script público d
 - https://supabase.com/docs/guides/getting-started/api-keys
 - `public.acbot_is_admin()` e políticas existentes consultadas no projeto em 27/10/2026.
 - Changelog consultado em 27/10: mudança anunciada de cifras TLS 1.2 antigas em 10/11. O relay Node 22 e Edge usam TLS moderno.
+

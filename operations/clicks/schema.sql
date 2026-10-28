@@ -3,23 +3,26 @@ begin;
 
 create table public.refri_site_click_daily (
   day date not null,
-  event_type text not null check (event_type in ('affiliate_click','product_view_click','whatsapp_click')),
+  event_type text not null check (event_type in ('affiliate_click','product_view_click','whatsapp_click','page_view','filter_use')),
   product_id bigint not null check (product_id between 0 and 2147483647),
-  placement text not null check (placement in ('home_card','home_carousel','home_hero','home_footer','home_floating','home_direct','product_offer','product_whatsapp','collection_card','related_card')),
+  placement text not null check (placement in ('home_card','home_card_filtered','home_carousel','home_hero','home_footer','home_floating','home_direct','product_offer','product_whatsapp','collection_card','related_card','page_load','search_filter','category_filter')),
   page_type text not null check (page_type in ('home','product','category','catalogue')),
   clicks bigint not null default 1 check (clicks between 1 and 100000),
   primary key (day, event_type, product_id, placement, page_type),
   constraint refri_click_coherent_dimensions check (
     (event_type = 'affiliate_click' and product_id > 0 and
-      ((page_type = 'home' and placement in ('home_card','home_carousel')) or (page_type = 'product' and placement = 'product_offer')))
+      ((page_type = 'home' and placement in ('home_card','home_card_filtered','home_carousel')) or (page_type = 'product' and placement = 'product_offer')))
     or (event_type = 'product_view_click' and product_id > 0 and
       ((page_type in ('category','catalogue') and placement = 'collection_card') or (page_type = 'product' and placement = 'related_card')))
     or (event_type = 'whatsapp_click' and
       ((page_type = 'home' and product_id = 0 and placement in ('home_hero','home_footer','home_floating','home_direct'))
        or (page_type = 'product' and product_id > 0 and placement = 'product_whatsapp')))
+    or (event_type = 'page_view' and placement = 'page_load' and
+      ((page_type = 'product' and product_id > 0) or (page_type in ('home','category','catalogue') and product_id = 0)))
+    or (event_type = 'filter_use' and product_id = 0 and page_type = 'home' and placement in ('search_filter','category_filter'))
   )
 );
-comment on table public.refri_site_click_daily is 'Aggregate clicks by Cuiaba calendar day and product; not unique people, purchases or WhatsApp joins. No visitor identifiers.';
+comment on table public.refri_site_click_daily is 'Aggregate page views, filter use and clicks by Cuiaba calendar day and product; not unique people, purchases or WhatsApp joins. No visitor identifiers or search terms. Legacy column clicks stores the count for each event_type.';
 alter table public.refri_site_click_daily enable row level security;
 revoke all on table public.refri_site_click_daily from public, anon, authenticated;
 grant select on table public.refri_site_click_daily to authenticated;
@@ -53,3 +56,4 @@ revoke all on function public.refri_record_site_click(text,bigint,text,text) fro
 grant execute on function public.refri_record_site_click(text,bigint,text,text) to service_role;
 
 commit;
+
