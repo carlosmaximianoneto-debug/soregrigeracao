@@ -6,9 +6,9 @@ body:has(.hero){background:var(--paper)}
 .category-select select{width:100%;height:50px;background:#fff;border:1px solid #bdc9c9;border-radius:8px;color:var(--ink);font:14px Inter,sans-serif;padding:0 13px}
 .load-more{display:block;margin:30px auto 0;padding:14px 24px;min-height:48px;background:var(--navy);color:#fff;font:600 14px Inter,sans-serif;border:0;border-radius:8px}
 .load-more[hidden]{display:none}
-/* Let shorter cards fit their content instead of stretching to the longest title. */
-.products{align-items:start}
-.catalogue-price{margin-top:0;padding-top:12px;font-size:20px;font-weight:700;line-height:1.4}
+/* Equal cards per row; let text grow instead of imposing a fixed card height. */
+.products{align-items:stretch}
+.catalogue-price{margin-top:auto;padding-top:12px;font-size:20px;font-weight:700;line-height:1.4}
 .catalogue-price span{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:3px}
 .catalogue-price .catalogue-discount{width:fit-content;padding:3px 6px;margin-top:6px;border-radius:4px;background:#e6f4ea;color:#176536;font-size:12px;font-weight:700;line-height:1.4}
 .image-unavailable{height:100%;display:grid;place-items:center;color:var(--muted);font-size:13px}
@@ -141,3 +141,13 @@ body:has(.hero){background:var(--paper)}
   .catalogue .section-heading>p{display:none}
 }
 @media(max-width:360px){.hero.catalogue-hero{padding-inline:16px}.catalogue-hero h1{font-size:34px}}
+
+/* Share content tracks so optional discounts cannot misalign prices and CTAs. */
+@supports(grid-template-rows:subgrid){
+  .products>.product{display:grid;grid-row:span 5;grid-template-rows:subgrid;row-gap:0}
+  .product>.product-info{display:grid;grid-row:span 4;grid-template-rows:subgrid;row-gap:0}
+  .product-info>.product-type,.product-info>h3{align-self:start}
+  .product-info>.catalogue-price{margin-top:0;align-self:start}
+  .product-info>.product-link{align-self:end}
+  .products>.product[hidden]{display:none}
+}

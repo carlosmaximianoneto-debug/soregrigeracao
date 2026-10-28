@@ -9,9 +9,16 @@
 
 .empty-catalogue{grid-column:1/-1;padding:35px 0;font-size:14px;line-height:1.8;color:var(--muted)}
 
-/* Keep short collection/related cards compact without hiding product names. */
-.product-grid{align-items:start}
-.product-card .detail-link{margin-top:0}
+/* Keep each row aligned while preserving complete product names. */
+.product-grid{align-items:stretch}
+.product-card .detail-link{margin-top:auto}
+@supports(grid-template-rows:subgrid){
+  .product-grid>.product-card{display:grid;grid-row:span 4;grid-template-rows:subgrid;row-gap:0}
+  .product-card>.product-copy{display:grid;grid-row:span 3;grid-template-rows:subgrid;row-gap:0}
+  .product-copy>.eyebrow,.product-copy>h2{align-self:start}
+  .product-copy>.detail-link{margin-top:0;align-self:end}
+  @media(max-width:640px){.related .product-card:last-child{display:grid}}
+}
 
 .group-join{margin-top:26px;padding-top:24px;border-top:1px solid var(--line)}
 .group-join-title{font-size:14px;font-weight:600;line-height:1.5}
