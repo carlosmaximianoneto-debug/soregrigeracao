@@ -1,8 +1,8 @@
 import { createClickHandler } from './handler.mjs';
+import { matchesRelayBearer } from './relay-auth.mjs';
 
 const base = Deno.env.get('SUPABASE_URL');
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const relayKey = Deno.env.get('SUPABASE_ANON_KEY');
 
 const handler = createClickHandler({ record: async (event: Record<string, string | number>) => {
   if (!base || !serviceKey) throw new Error('Collector unavailable');
@@ -16,10 +16,10 @@ const handler = createClickHandler({ record: async (event: Record<string, string
   return await result.json();
 } });
 
-// verify_jwt=true remains enabled at the platform. Restrict this application
-// endpoint to the server relay's application credential as an additional check.
-Deno.serve((req: Request) => {
-  if (!relayKey || req.headers.get('authorization') !== `Bearer ${relayKey}`) {
+// verify_jwt=true remains enabled at the platform. Pin the relay's exact active
+// public credential, independent of the project's default anon environment key.
+Deno.serve(async (req: Request) => {
+  if (!await matchesRelayBearer(req.headers.get('authorization'))) {
     return new Response(null, { status: 401, headers: { 'Cache-Control': 'no-store' } });
   }
   return handler(req);
