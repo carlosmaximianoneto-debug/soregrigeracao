@@ -74,6 +74,8 @@
     image.alt = product.title;
     const link = slide.querySelector('a');
     link.href = product.url;
+    link.dataset.trackEvent = 'affiliate_click'; link.dataset.productId = product.id;
+    link.dataset.placement = 'home_carousel'; link.dataset.pageType = 'home';
     link.setAttribute('aria-label', `Ver ${product.title} no Mercado Livre`);
   }
   function loadImage(image, active) {

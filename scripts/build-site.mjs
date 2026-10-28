@@ -7,7 +7,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SITE_URL = 'https://sorefrigeracao.com';
 export const CATALOGUE_URL = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/refri-catalogue/catalogue.json';
 export const PUBLIC_FILES = Object.freeze([
-  'index.html', 'styles.css', 'mobile-refinements.css', 'carousel.css',
+  'index.html', 'site-clicks.js', 'privacidade/index.html', 'styles.css', 'mobile-refinements.css', 'carousel.css',
   'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js', 'seo-pages.css',
   'assets/produto_149.jpg', 'assets/produto_263.jpg',
   'assets/produto_1980.jpg', 'assets/produto_2164.jpg',
@@ -65,6 +65,7 @@ export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 
   if (outputStat) await fs.rm(output, { recursive: true });
   await fs.mkdir(output, { recursive: true });
   content.set('index.html', Buffer.from(html));
+  if (!production) content.set('privacidade/index.html', Buffer.from(content.get('privacidade/index.html').toString('utf8').replace('content="index,follow"', 'content="noindex,nofollow"').replace(/<link rel="canonical"[^>]*>/g, '')));
   for (const [name, bytes] of content) {
     const target = path.join(output, name);
     await fs.mkdir(path.dirname(target), { recursive: true });
