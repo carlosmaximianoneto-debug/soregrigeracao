@@ -18,4 +18,10 @@
 .group-join-note{margin-top:10px;font-size:11px;line-height:1.7;color:var(--muted);text-align:center}
 .collection-heading .group-join{max-width:440px}
 
+/* The offer and WhatsApp actions retain distinct destinations and colors. */
+.detail-copy .primary-button{justify-content:center;min-height:64px;padding:18px 20px;gap:12px;background:#ffe600;color:#10232d;font-size:16px;line-height:1.4;text-align:center}
+.detail-copy .primary-button:hover{background:#ffed4d}
+.detail-copy .primary-button:active{background:#f2d900}
+.detail-copy .primary-button svg{flex:0 0 22px;width:22px;height:22px}
+
 .desktop-category-list{display:none}.category-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;font:700 14px Inter,Arial,sans-serif;letter-spacing:0;padding:10px 0 17px}.category-heading>span{font-size:11px;font-weight:500;color:var(--muted)}@media(min-width:861px){.desktop-category-list{display:block}.category-sidebar>details{display:none}}
