@@ -20,7 +20,7 @@ test('every product, category and pagination page links to the configured group 
     assert.match(html, /Entrar no grupo grátis/);
     assert.match(html, /Sem custo para entrar\. Saia quando quiser\./);
     if (route.startsWith('/seo/produtos/')) {
-      assert.ok(html.indexOf('Conferir anúncio') < html.indexOf('group-join-button'));
+      assert.ok(html.indexOf('Ver oferta no Mercado Livre') < html.indexOf('group-join-button'));
       assert.match(html, /rel="sponsored noopener noreferrer"/);
     }
   }
