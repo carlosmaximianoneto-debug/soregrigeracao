@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createSeoHandler } from '../seo-netlify-function.mjs';
 import { createSiteClickRelay } from '../site-click-handler.mjs';
+import { createBlogClickRelay } from '../blog-click-handler.mjs';
 import { serverOptions, categorySource } from '../netlify/generated/catalogue-config.mjs';
 import { createVpsServer } from './http-server.mjs';
 import { createImageHandler } from './image-handler.mjs';
@@ -27,6 +28,7 @@ async function main() {
   const server = createVpsServer({ distDir, revision,
     seoHandler: createSeoHandler({ ...serverOptions, categorySource }),
     clickHandler: createSiteClickRelay({ apiKey, enabled }),
+    blogClickHandler: createBlogClickRelay({ apiKey, enabled }),
     imageHandler: createImageHandler(),
   });
   server.once('error', () => { console.error('Site HTTP startup failed.'); process.exitCode = 1; });

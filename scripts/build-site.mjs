@@ -7,7 +7,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SITE_URL = 'https://sorefrigeracao.com';
 export const CATALOGUE_URL = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/refri-catalogue/catalogue.json';
 export const PUBLIC_FILES = Object.freeze([
-  'index.html', 'site-clicks.js', 'privacidade/index.html', 'styles.css', 'mobile-refinements.css', 'carousel.css',
+  'index.html', 'site-clicks.js', 'blog-clicks.js', 'blog.css', 'privacidade/index.html', 'styles.css', 'mobile-refinements.css', 'carousel.css',
   'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js', 'seo-pages.css',
   'assets/produto_149.jpg', 'assets/produto_263.jpg',
   'assets/produto_1980.jpg', 'assets/produto_2164.jpg',

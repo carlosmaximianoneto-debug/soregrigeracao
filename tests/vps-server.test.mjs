@@ -17,6 +17,18 @@ const integration = (name, fn) => test(name, { skip: !runtime.createVpsServer },
 const origin = 'https://sorefrigeracao.com';
 const click = { event_type: 'affiliate_click', product_id: 2441, placement: 'home_card', page_type: 'home' };
 
+integration('blog routes and collector are isolated while preserving privacy headers', async t => {
+  const seen=[];
+  const {port}=await fixture(t,{seoHandler:async req=>new Response(new URL(req.url).pathname),
+    blogClickHandler:async req=>{seen.push({body:await req.json(),dnt:req.headers.get('dnt'),gpc:req.headers.get('sec-gpc'),cookie:req.headers.get('cookie')});return new Response(null,{status:204});}});
+  const page=await request(port,'/blog/vacuometro-digital-como-escolher/');assert.equal(page.status,200);assert.match(page.text,/^\/blog\//);
+  const event={article_slug:'vacuometro-digital-como-escolher',event_type:'page_view',placement:'page_load'};
+  assert.equal((await request(port,'/api/blog-click',{method:'POST',body:JSON.stringify(event),headers:{Origin:origin,'Content-Type':'application/json',DNT:'1','Sec-GPC':'1',Cookie:'private'}})).status,204);
+  assert.deepEqual(seen,[{body:event,dnt:'1',gpc:'1',cookie:null}]);
+  assert.equal((await request(port,'/api/blog-click',{method:'POST',body:'x'.repeat(513),headers:{'Content-Length':'513'}})).status,413);
+  assert.equal(seen.length,1);assert.equal((await request(port,'/api/blog-click')).status,405);
+});
+
 async function fixture(t, options = {}) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'refri-http-'));
   const distDir = path.join(directory, 'dist');
