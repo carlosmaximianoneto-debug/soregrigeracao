@@ -3,12 +3,14 @@ import fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { BLOG_COVER_FILES } from '../blog/covers.mjs';
 
 const ORIGIN = 'https://sorefrigeracao.com';
 const MAX_BODY_BYTES = 512;
 const MAX_STATIC_BYTES = 10 * 1024 * 1024;
 // Public artifacts only. A file being present in dist does not make it public.
 export const PUBLIC_FILES = Object.freeze([
+  ...BLOG_COVER_FILES,
   'index.html', 'site-config.js', 'site-clicks.js', 'blog-clicks.js', 'blog.css', 'privacidade/index.html',
   'styles.css', 'mobile-refinements.css', 'carousel.css', 'floating-join.css', 'seo-pages.css',
   'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js',
@@ -19,7 +21,7 @@ export const PUBLIC_FILES = Object.freeze([
 const PUBLIC_SET = new Set(PUBLIC_FILES);
 const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
-  '.png': 'image/png', '.jpg': 'image/jpeg' });
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' });
 const SECURITY_HEADERS = Object.freeze({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer', 'Permissions-Policy': 'camera=(), microphone=(), geolocation=()' });
 
@@ -113,7 +115,7 @@ async function staticResponse(root, name, method, requestHeaders, revision) {
     // a different tag; HTML/config still revalidate instead of hiding updates.
     const etag = `W/"${revision || 'local'}-${stat.size.toString(16)}-${stat.mtimeMs.toString(16)}"`;
     const headers = { 'Content-Type': MIME[path.extname(name)],
-      'Cache-Control': 'public, max-age=0, must-revalidate', ETag: etag };
+      'Cache-Control': name.startsWith('assets/blog/') ? 'public, max-age=31536000, immutable' : 'public, max-age=0, must-revalidate', ETag: etag };
     const validators = requestHeaders['if-none-match'];
     if (typeof validators === 'string' && validators.split(',').some(value => value.trim() === '*' || value.trim().replace(/^W\//, '') === etag.replace(/^W\//, ''))) {
       await handle.close();
