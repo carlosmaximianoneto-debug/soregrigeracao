@@ -9,7 +9,7 @@ const MAX_BODY_BYTES = 512;
 const MAX_STATIC_BYTES = 10 * 1024 * 1024;
 // Public artifacts only. A file being present in dist does not make it public.
 export const PUBLIC_FILES = Object.freeze([
-  'index.html', 'site-config.js', 'site-clicks.js', 'privacidade/index.html',
+  'index.html', 'site-config.js', 'site-clicks.js', 'blog-clicks.js', 'blog.css', 'privacidade/index.html',
   'styles.css', 'mobile-refinements.css', 'carousel.css', 'floating-join.css', 'seo-pages.css',
   'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js',
   'assets/produto_149.jpg', 'assets/produto_263.jpg', 'assets/produto_1980.jpg', 'assets/produto_2164.jpg',
@@ -37,7 +37,7 @@ function safeRoute(target) {
 }
 
 const hasBody = req => Boolean(req.headers['transfer-encoding']) || Number(req.headers['content-length'] || 0) > 0;
-const isSeo = route => /^\/(?:produtos|categorias|catalogo|seo)(?:\/|$)/.test(route)
+const isSeo = route => /^\/(?:blog|produtos|categorias|catalogo|seo)(?:\/|$)/.test(route)
   || route === '/sitemap.xml' || route === '/robots.txt' || route === '/api/catalogue-first';
 
 function readBody(req, timeoutMs) {
@@ -69,7 +69,7 @@ function readBody(req, timeoutMs) {
 function fetchRequest(req, body, { image = false } = {}) {
   // Do not pass cookies, inbound authorization, IPs or proxy headers to handlers.
   const headers = new Headers();
-  const names = image ? ['accept'] : ['origin', 'content-type', 'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest'];
+  const names = image ? ['accept'] : ['origin', 'content-type', 'sec-fetch-site', 'sec-fetch-mode', 'sec-fetch-dest', 'dnt', 'sec-gpc'];
   for (const name of names) if (typeof req.headers[name] === 'string') headers.set(name, req.headers[name]);
   if (body) headers.set('content-length', String(body.length));
   return new Request(ORIGIN + req.url, { method: image && req.method === 'HEAD' ? 'GET' : req.method,
@@ -145,7 +145,7 @@ function sendResponse(req, res, response) {
   stream.pipe(res);
 }
 
-export function createVpsServer({ distDir, seoHandler, clickHandler, imageHandler, revision,
+export function createVpsServer({ distDir, seoHandler, clickHandler, blogClickHandler, imageHandler, revision,
   bodyTimeoutMs = 3000, handlerTimeoutMs = 10_000 } = {}) {
   if (!distDir || ![seoHandler, clickHandler, imageHandler].every(value => typeof value === 'function')) throw new Error('Missing VPS runtime configuration');
   if (revision !== undefined && !/^[a-f0-9]{40}$/.test(revision)) throw new Error('Invalid site revision');
@@ -161,13 +161,15 @@ export function createVpsServer({ distDir, seoHandler, clickHandler, imageHandle
     (async () => {
       const route = safeRoute(req.url);
       if (!route) return failure(404, { Connection: 'close' });
-      if (route === '/api/site-click') {
+      if (route === '/api/site-click' || route === '/api/blog-click') {
+        const eventHandler = route === '/api/blog-click' ? blogClickHandler : clickHandler;
+        if (typeof eventHandler !== 'function') return failure(503);
         if (!['POST', 'OPTIONS'].includes(req.method)) return failure(405, { Allow: 'POST, OPTIONS', Connection: 'close' });
         if (req.method === 'OPTIONS' && hasBody(req)) return failure(400, { Connection: 'close' });
         let body;
         try { if (req.method === 'POST') body = await readBody(req, bodyTimeoutMs); }
         catch (status) { return failure(status, { Connection: 'close' }); }
-        return boundedHandler(clickHandler, fetchRequest(req, body), handlerTimeoutMs);
+        return boundedHandler(eventHandler, fetchRequest(req, body), handlerTimeoutMs);
       }
       if (!['GET', 'HEAD'].includes(req.method)) return failure(405, { Allow: 'GET, HEAD', Connection: 'close' });
       if (hasBody(req)) return failure(400, { Connection: 'close' });

@@ -1,0 +1,3 @@
+# Merge into the deployment's Supabase config; never deploy with --no-verify-jwt.
+[functions.refri-blog-click]
+verify_jwt = true

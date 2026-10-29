@@ -1,6 +1,9 @@
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createSeoRenderer, validateSeoOptions } from './seo-runtime.mjs';
+import { createBlogRenderer } from './blog-runtime.mjs';
+import { articlesA } from './blog/articles-a.mjs';
+import { articlesB } from './blog/articles-b.mjs';
 
 // Deployment candidate only: no credentials, Supabase SDK, or database writes.
 // Keep this file beside seo-runtime.mjs and include categories.js in its function bundle.
@@ -42,6 +45,7 @@ const message = (title, description) => `<!doctype html><html lang="pt-BR"><head
 
 export function createSeoHandler({ snapshotURL, categorySource, base = '', production = false, invitationURL, fetchImpl = fetch, now = Date.now } = {}) {
   const options = validateSeoOptions({ production, base, invitationURL });
+  const blog = createBlogRenderer([...articlesA, ...articlesB], options);
   const endpoint = new URL(snapshotURL);
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.hash || endpoint.search) throw new Error('O JSON público deve usar URL HTTPS sem credenciais ou parâmetros.');
   if (typeof categorySource !== 'string') throw new Error('categories.js deve estar incluído no pacote da função.');
@@ -76,6 +80,15 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
     if (!['GET', 'HEAD'].includes(request.method)) return reply('Método não permitido.', 405, { Allow: 'GET, HEAD' });
     const missing = () => reply(message('Página não encontrada', 'Use o catálogo para encontrar uma ferramenta.'), 404);
     if (/%|\/\.|\\|\/\//.test(route)) return missing();
+    // Editorial pages are versioned with the release and work even when the
+    // product feed is unavailable. Never fetch Supabase to render an article.
+    if (/^\/blog(?:\/|$)/.test(route)) {
+      const normalRoute = route.replace(/\/index\.html$/, '/').replace(/\/?$/, '/');
+      const html = blog.render(normalRoute);
+      if (!html) return missing();
+      if (route !== normalRoute) return reply('', 301, { Location: normalRoute });
+      return reply(html, 200, { 'Cache-Control': 'public, max-age=0, must-revalidate' });
+    }
     const publicRoute = route.startsWith('/seo/') ? route.slice(4) : route;
     if (publicRoute === '/robots.txt') {
       if (route !== '/robots.txt') return reply('', 301, { Location: '/robots.txt' });
@@ -92,7 +105,7 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       if (publicRoute === '/sitemap.xml') {
         if (!renderer.sitemap) return reply(message('Página não encontrada', 'O mapa do site fica disponível após a configuração do domínio.'), 404);
         if (route !== '/sitemap.xml') return reply('', 301, { Location: '/sitemap.xml' });
-        return reply(renderer.sitemap, 200, { 'Content-Type': 'application/xml; charset=utf-8' });
+        return reply(renderer.sitemap.replace('</urlset>', `${blog.sitemapEntries}</urlset>`), 200, { 'Content-Type': 'application/xml; charset=utf-8' });
       }
       let normalRoute = publicRoute.replace(/\/index\.html$/, '/').replace(/\/?$/, '/');
       const pagination = normalRoute.match(/^(\/catalogo\/|\/categorias\/[a-z0-9-]+\/)pagina\/(0*[1-9]\d*)\/$/);
@@ -133,4 +146,4 @@ export default async function handler(request) {
 }
 
 // preferStatic false is essential: generated preview HTML must never shadow live data.
-export const config = { path: ['/produtos', '/produtos/*', '/categorias', '/categorias/*', '/catalogo', '/catalogo/*', '/seo', '/seo/*', '/sitemap.xml', '/robots.txt'], preferStatic: false };
+export const config = { path: ['/blog', '/blog/*', '/produtos', '/produtos/*', '/categorias', '/categorias/*', '/catalogo', '/catalogo/*', '/seo', '/seo/*', '/sitemap.xml', '/robots.txt'], preferStatic: false };

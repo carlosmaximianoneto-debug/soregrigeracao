@@ -19,6 +19,14 @@
 !seo-runtime.mjs
 !seo-netlify-function.mjs
 !site-click-handler.mjs
+!blog-runtime.mjs
+!blog-click-handler.mjs
+!blog.css
+!blog-clicks.js
+!blog/
+blog/**
+!blog/articles-a.mjs
+!blog/articles-b.mjs
 !privacidade/
 privacidade/**
 !privacidade/index.html
@@ -47,3 +55,6 @@ operations/**
 !operations/clicks/
 operations/clicks/**
 !operations/clicks/handler.mjs
+!operations/blog-clicks/
+operations/blog-clicks/**
+!operations/blog-clicks/handler.mjs
