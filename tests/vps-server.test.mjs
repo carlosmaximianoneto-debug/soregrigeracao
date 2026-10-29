@@ -17,6 +17,18 @@ const integration = (name, fn) => test(name, { skip: !runtime.createVpsServer },
 const origin = 'https://sorefrigeracao.com';
 const click = { event_type: 'affiliate_click', product_id: 2441, placement: 'home_card', page_type: 'home' };
 
+integration('only approved versioned blog covers are served with the correct MIME and cache policy', async t => {
+  const {port,distDir}=await fixture(t);
+  const filename='assets/blog/bomba-de-vacuo-3-cfm-ou-6-cfm-v1-640.webp';
+  await fs.mkdir(path.join(distDir,'assets/blog'),{recursive:true});
+  await fs.writeFile(path.join(distDir,filename),'public illustration');
+  await fs.writeFile(path.join(distDir,'assets/blog/private.webp'),'not published');
+  const result=await request(port,'/'+filename);
+  assert.equal(result.status,200);assert.equal(result.headers['content-type'],'image/webp');
+  assert.equal(result.headers['cache-control'],'public, max-age=31536000, immutable');
+  assert.equal((await request(port,'/assets/blog/private.webp')).status,404);
+});
+
 integration('blog routes and collector are isolated while preserving privacy headers', async t => {
   const seen=[];
   const {port}=await fixture(t,{seoHandler:async req=>new Response(new URL(req.url).pathname),

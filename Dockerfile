@@ -9,6 +9,8 @@ COPY catalogue.js categories.js catalogue-images.js carousel.js site-identity.mj
 COPY privacidade/index.html ./privacidade/index.html
 COPY assets/produto_149.jpg assets/produto_263.jpg assets/produto_1980.jpg assets/produto_2164.jpg ./assets/
 COPY assets/favicon.svg assets/favicon.ico assets/apple-touch-icon.png assets/icon-192.png assets/icon-512.png assets/compartilhamento.png ./assets/
+COPY assets/blog/ ./assets/blog/
+COPY blog/covers.mjs ./blog/covers.mjs
 COPY scripts/build-site.mjs ./scripts/build-site.mjs
 RUN CONTEXT=vps-production npm run build
 
@@ -21,7 +23,7 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/netlify/generated/catalogue-config.mjs ./netlify/generated/catalogue-config.mjs
 COPY --chown=node:node package.json seo-runtime.mjs seo-netlify-function.mjs site-identity.mjs site-click-handler.mjs ./
 COPY --chown=node:node blog-runtime.mjs blog-click-handler.mjs ./
-COPY --chown=node:node blog/articles-a.mjs blog/articles-b.mjs ./blog/
+COPY --chown=node:node blog/articles-a.mjs blog/articles-b.mjs blog/covers.mjs ./blog/
 COPY --chown=node:node operations/blog-clicks/handler.mjs ./operations/blog-clicks/handler.mjs
 COPY --chown=node:node operations/clicks/handler.mjs ./operations/clicks/handler.mjs
 COPY --chown=node:node server/http-server.mjs server/main.mjs server/image-handler.mjs ./server/

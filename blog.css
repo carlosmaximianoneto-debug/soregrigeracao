@@ -6,3 +6,9 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.blog-join-button{transition:none}}
 
 .article-context{margin-top:24px}
+.guide-cover{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;background:var(--navy);border-radius:6px;margin-bottom:22px}
+.article-cover{margin:0 0 36px;width:100%}
+.article-cover-image{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;background:var(--navy);border-radius:10px}
+.article-cover figcaption{margin-top:8px;color:var(--muted);font-size:12px;line-height:1.6}
+@media(min-width:1001px){.article-cover{max-width:900px}.article-cover-image{max-height:506px}}
+@media(max-width:760px){.article-cover{margin-bottom:26px}.guide-cover{margin-bottom:18px}}
