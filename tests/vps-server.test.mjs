@@ -94,6 +94,31 @@ integration('rejects raw traversal, encoded path variants and absolute request t
   assert.equal(called, 0);
 });
 
+integration('static assets revalidate with304 and a new file or release invalidates the tag', async t => {
+  const { port, distDir } = await fixture(t, {revision:'a'.repeat(40)});
+  const first=await request(port,'/styles.css');
+  assert.match(first.headers.etag,/^W\//);
+  const cached=await request(port,'/styles.css',{headers:{'If-None-Match':first.headers.etag}});
+  assert.equal(cached.status,304);assert.equal(cached.text,'');
+  assert.equal(cached.headers['cache-control'],'public, max-age=0, must-revalidate');
+  assert.equal(cached.headers['content-length'],undefined);
+  assert.equal((await request(port,'/styles.css',{headers:{'If-None-Match':'"unrelated"'}})).status,200);
+  await fs.writeFile(path.join(distDir,'styles.css'),'body{color:#10232d;background:white}');
+  const changed=await request(port,'/styles.css',{headers:{'If-None-Match':first.headers.etag}});
+  assert.equal(changed.status,200);assert.notEqual(changed.headers.etag,first.headers.etag);
+  const home=await request(port,'/');
+  assert.equal((await request(port,'/',{headers:{'If-None-Match':home.headers.etag}})).status,304);
+});
+
+integration('first catalogue page routes only the exact public endpoint through the bounded handler',async t=>{
+  let calls=0;
+  const {port}=await fixture(t,{seoHandler:async req=>{calls++;assert.equal(new URL(req.url).pathname,'/api/catalogue-first');return Response.json({products:[],total:0});}});
+  assert.equal((await request(port,'/api/catalogue-first')).status,200);
+  assert.equal((await request(port,'/api/catalogue-first',{method:'POST'})).status,405);
+  assert.equal((await request(port,'/api/catalogue-first/secret')).status,404);
+  assert.equal(calls,1);
+});
+
 integration('never follows a symlink or junction inside the static allowlist', async t => {
   const { port, distDir, directory } = await fixture(t);
   const outside = path.join(directory, 'outside');

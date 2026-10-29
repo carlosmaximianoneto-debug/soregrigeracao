@@ -1,10 +1,37 @@
 import fs from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { createSeoRenderer, validateSeoOptions } from './seo-runtime.mjs';
 
 // Deployment candidate only: no credentials, Supabase SDK, or database writes.
 // Keep this file beside seo-runtime.mjs and include categories.js in its function bundle.
 const CACHE_MS = 30_000;
 const MAX_SNAPSHOT_AGE_MS = 15 * 60_000;
+// Only public catalogue fields cross this boundary. The small first page shares
+// the SEO snapshot cache and its deadline; it never queries private tables.
+function firstPage(snapshot, renderer) {
+  const originals = new Map(snapshot.products.map(row => [String(row.id), row]));
+  const allowed = (value, image = false) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' && !url.username && !url.password && !url.port
+        && (image ? /(^|\.)(supabase\.co|mlstatic\.com)$/.test(url.hostname)
+          : /(^|\.)(meli\.la|mercadolivre\.com\.br|mercadolibre\.com)$/.test(url.hostname));
+    } catch { return false; }
+  };
+  const generatedAt = renderer.snapshotDate.toISOString();
+  const rows = renderer.products.filter(row => allowed(row.url) && allowed(row.image, true)).map(row => {
+    const original = originals.get(row.id);
+    const discount = row.price > 0 && Number.isInteger(original?.discount) && original.discount > 0 && original.discount < 100 ? original.discount : null;
+    const category = typeof original?.category === 'string' && original.category ? original.category : row.category;
+    return { id: row.id, title: row.title, image: row.image, url: row.url, price: row.price, discount, category };
+  });
+  const categories = [...new Set(rows.map(row => row.category))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  // A new public snapshot rotates the selection, but repeated requests to that
+  // snapshot reuse the same images and do not undermine the image cache.
+  const ranked = rows.map(row => ({ row, rank: createHash('sha256').update(`${generatedAt}:${row.id}`).digest('hex') }));
+  ranked.sort((a, b) => a.rank.localeCompare(b.rank));
+  return { generatedAt, total: rows.length, categories, products: ranked.slice(0, 24).map(entry => entry.row) };
+}
 const RESPONSE_HEADERS = {
   'Content-Type': 'text/html; charset=utf-8',
   'Cache-Control': 'no-store',
@@ -22,7 +49,7 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
   let pending = null;
 
   async function readCurrentCatalogue() {
-    if (cached && now() < cached.expiresAt) return cached.renderer;
+    if (cached && now() < cached.expiresAt) return cached;
     if (pending) return pending;
     // An expired snapshot is never served if fetching or validating the new one fails.
     cached = null;
@@ -35,8 +62,8 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       const sourceTime = Date.parse(snapshot.generatedAt);
       if (!Number.isFinite(sourceTime) || now() - sourceTime > MAX_SNAPSHOT_AGE_MS || sourceTime - now() > 60_000) throw new Error('O snapshot público está atrasado ou tem data inválida.');
       const renderer = createSeoRenderer(snapshot, options, categorySource);
-      cached = { renderer, expiresAt: Math.min(now() + CACHE_MS, sourceTime + MAX_SNAPSHOT_AGE_MS) };
-      return renderer;
+      cached = { renderer, firstPage: firstPage(snapshot, renderer), expiresAt: Math.min(now() + CACHE_MS, sourceTime + MAX_SNAPSHOT_AGE_MS) };
+      return cached;
     })();
     try { return await pending; } finally { pending = null; }
   }
@@ -55,9 +82,13 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       const robots = options.production ? `User-agent: *\nAllow: /\nSitemap: ${options.base}/sitemap.xml\n` : 'User-agent: *\nDisallow: /\n';
       return reply(robots, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
     }
-    if (publicRoute !== '/sitemap.xml' && !/^\/(?:produtos|categorias|catalogo)(?:\/|$)/.test(publicRoute)) return missing();
+    const initialPage = route === '/api/catalogue-first';
+    if (initialPage && requestURL.search) return reply('', 400);
+    if (!initialPage && publicRoute !== '/sitemap.xml' && !/^\/(?:produtos|categorias|catalogo)(?:\/|$)/.test(publicRoute)) return missing();
     try {
-      const renderer = await readCurrentCatalogue();
+      const current = await readCurrentCatalogue();
+      if (initialPage) return reply(JSON.stringify(current.firstPage), 200, { 'Content-Type': 'application/json; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' });
+      const { renderer } = current;
       if (publicRoute === '/sitemap.xml') {
         if (!renderer.sitemap) return reply(message('Página não encontrada', 'O mapa do site fica disponível após a configuração do domínio.'), 404);
         if (route !== '/sitemap.xml') return reply('', 301, { Location: '/sitemap.xml' });

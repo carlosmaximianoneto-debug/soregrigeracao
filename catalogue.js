@@ -24,7 +24,14 @@
   const money = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
   const settings = window.REFRI_CATALOGUE || {catalogueUrl:'./catalogue-public.json',preview:false,maxAgeMs:900000,refreshMs:300000};
   const cacheKey = `refri-catalogue:v1:${settings.catalogueUrl}`, cacheTtl = 60000;
-  let snapshotTime = 0, loading = false, cacheExpiresAt = 0, cacheTimer;
+  let snapshotTime = 0, loading = false, cacheExpiresAt = 0, cacheTimer, loadVersion = 0;
+  let partial = false, catalogueTotal = 0;
+  const orderSeed = Math.random().toString(36);
+  function orderScore(id){
+    let hash=2166136261;
+    for(const character of orderSeed+String(id))hash=Math.imul(hash^character.charCodeAt(0),16777619);
+    return hash>>>0;
+  }
   function publishCatalogue(rows){window.REFRI_CURRENT_CATALOGUE=rows;document.dispatchEvent(new CustomEvent('catalogue:updated',{detail:{products:rows}}));}
   const escape = text => String(text ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const safeUrl = (value,image=false) => {try {const u=new URL(value);return u.protocol==='https:'&&(image ? /(^|\.)(supabase\.co|mlstatic\.com)$/.test(u.hostname):/(^|\.)(meli\.la|mercadolivre\.com\.br|mercadolibre\.com)$/.test(u.hostname))?u.href:null;}catch{return null;}};
@@ -52,8 +59,10 @@
         });
       });
     }
-    count.textContent=filtered.length?`${Math.min(shown,filtered.length)} de ${filtered.length.toLocaleString('pt-BR')} produtos`:'Nenhum produto encontrado';
-    more.hidden=shown>=filtered.length;empty.hidden=filtered.length>0;select.value=category;
+    count.textContent=partial
+      ? (searchTokens(input.value).length||category!=='all'?'Carregando resultados de todo o catálogo…':`${Math.min(shown,filtered.length)} de ${catalogueTotal.toLocaleString('pt-BR')} produtos · carregando restante…`)
+      : filtered.length?`${Math.min(shown,filtered.length)} de ${filtered.length.toLocaleString('pt-BR')} produtos`:'Nenhum produto encontrado';
+    more.hidden=partial||shown>=filtered.length;empty.hidden=partial||filtered.length>0;select.value=category;
     pills.querySelectorAll('button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.filter===category)));
   }
   function filter(resetPagination=true){
@@ -81,7 +90,7 @@
   }
   function forgetCache(){try{window.localStorage.removeItem(cacheKey);}catch{/* Storage may be blocked or unavailable. */}}
   function clearCatalogue(message){
-    clearTimeout(cacheTimer);cacheExpiresAt=0;snapshotTime=0;products=[];filtered=[];renderedMarkup=null;
+    clearTimeout(cacheTimer);cacheExpiresAt=0;snapshotTime=0;partial=false;catalogueTotal=0;products=[];filtered=[];renderedMarkup=null;
     grid.innerHTML='';count.textContent='O catálogo está sendo atualizado.';more.hidden=true;empty.hidden=true;note.textContent=message;publishCatalogue([]);
   }
   function validateSnapshot(data){
@@ -90,17 +99,28 @@
     if(!settings.preview&&(!Number.isFinite(time)||Date.now()-time>=settings.maxAgeMs||time>Date.now()+60000))throw new Error('Catálogo desatualizado');
     return time;
   }
-  function applySnapshot(data){
+  function applySnapshot(data,firstPage=false){
+    if(firstPage&&(!Number.isSafeInteger(data?.total)||data.total<0||!Array.isArray(data.categories)||data.categories.some(c=>typeof c!=='string'||c.length>150)||data.products?.length>24||data.total<data.products?.length))throw new Error('Primeira página inválida');
+    const previousOrder=new Map(products.map((p,index)=>[String(p.id),index]));
     snapshotTime=validateSnapshot(data);
+    partial=firstPage;catalogueTotal=firstPage?data.total:data.products.length;
     const ids=new Set();products=data.products.flatMap(p=>{
       if(!p||typeof p.title!=='string')return[];
       const url=safeUrl(p.url),image=safeUrl(p.image,true);
-      if(!url||!image||!p.title||ids.has(p.id))return[];
-      ids.add(p.id);const category=typeof p.category==='string'&&p.category?p.category:window.catalogueCategory(p.title),tokens=searchTokens(p.title);
+      if(!url||!image||!p.title||ids.has(String(p.id)))return[];
+      ids.add(String(p.id));const category=typeof p.category==='string'&&p.category?p.category:window.catalogueCategory(p.title),tokens=searchTokens(p.title);
       const price=Number(p.price),discount=Number.isFinite(price)&&price>0&&Number.isInteger(p.discount)&&p.discount>0&&p.discount<100?p.discount:null;
       return[{...p,url,image,category,price,discount,searchTokens:tokens,searchWords:tokens.map(singular)}];
     });
-    const categories=[...new Set(products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    if(settings.randomOrder&&!firstPage){
+      // Keep visible products in place as the complete feed arrives or refreshes.
+      // New entries receive a stable order for this visit, not a new shuffle per render.
+      products.sort((a,b)=>{
+        const ai=previousOrder.get(String(a.id)),bi=previousOrder.get(String(b.id));
+        return ai!==undefined||bi!==undefined?(ai??Infinity)-(bi??Infinity):orderScore(a.id)-orderScore(b.id)||String(a.id).localeCompare(String(b.id));
+      });
+    }
+    const categories=[...new Set(firstPage?data.categories:products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
     if(category!=='all'&&!categories.includes(category))category='all';
     const categoryKey=JSON.stringify(categories);
     if(categoryKey!==renderedCategories){
@@ -110,7 +130,9 @@
       renderedCategories=categoryKey;
     }
     const date=new Date(data.generatedAt);note.textContent=`Base consultada em ${Number.isNaN(date.getTime())?'data não informada':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Isso não indica atualização dos preços e descontos. Confira o valor e a disponibilidade no anúncio.`;
-    document.querySelector('.results-meta>span').textContent='Produtos ativos no Supabase';filter(false);publishCatalogue(products);
+    document.querySelector('.results-meta>span').textContent='Produtos ativos no Supabase';filter(false);
+    // Carousel and browser cache must never mistake the first page for the full catalogue.
+    if(!firstPage)publishCatalogue(products);
   }
   function expireRestoredCache(){
     if(cacheExpiresAt&&Date.now()>=cacheExpiresAt){forgetCache();clearCatalogue('Aguardando uma base recente para exibir os produtos.');}
@@ -141,18 +163,28 @@
   async function load(){
     if (loading) return;
     loading = true;
+    const version=++loadVersion;
+    let complete=false;
     expireRestoredCache();
     grid.setAttribute('aria-busy','true');if(!snapshotTime)count.textContent='Carregando catálogo conferido…';
     try{
       const early=window.REFRI_CATALOGUE_PRELOAD;delete window.REFRI_CATALOGUE_PRELOAD;
-      const request=()=>readResponse(fetch(settings.catalogueUrl,{cache:'no-cache',signal:AbortSignal.timeout(15000)}));
+      const request=()=>readResponse(fetch(settings.catalogueUrl,{cache:'no-cache',...(settings.firstPageUrl?{priority:'low'}:{}),signal:AbortSignal.timeout(15000)}));
+      if(settings.firstPageUrl&&!snapshotTime){
+        const firstRequest=early?.url===settings.firstPageUrl?early.request:fetch(settings.firstPageUrl,{cache:'no-cache',priority:'high',signal:AbortSignal.timeout(15000)});
+        // Race the small same-origin response against the full public feed. Neither
+        // request blocks the other; a late first page cannot replace complete results.
+        readResponse(firstRequest).then(data=>{
+          if(version===loadVersion&&!complete&&!snapshotTime)applySnapshot(data,true);
+        }).catch(()=>{/* The full feed remains the fallback. */});
+      }
       // A slow page can outlive the early request's timeout. Retry it once, including body read failures.
       let data;
       if(early?.url===settings.catalogueUrl){try{data=await readResponse(early.request);}catch{data=await request();}}
       else data=await request();
-      applySnapshot(data);
+      complete=true;applySnapshot(data);
       clearTimeout(cacheTimer);cacheExpiresAt=0;rememberSnapshot();
-    }catch{forgetCache();clearCatalogue('Não foi possível obter uma base recente. Tente novamente em alguns minutos.');}
+    }catch{complete=true;forgetCache();clearCatalogue('Não foi possível obter uma base recente. Tente novamente em alguns minutos.');}
     finally{grid.setAttribute('aria-busy','false');loading=false;}
   }
   input.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(filter,120);});

@@ -38,7 +38,7 @@ function safeRoute(target) {
 
 const hasBody = req => Boolean(req.headers['transfer-encoding']) || Number(req.headers['content-length'] || 0) > 0;
 const isSeo = route => /^\/(?:produtos|categorias|catalogo|seo)(?:\/|$)/.test(route)
-  || route === '/sitemap.xml' || route === '/robots.txt';
+  || route === '/sitemap.xml' || route === '/robots.txt' || route === '/api/catalogue-first';
 
 function readBody(req, timeoutMs) {
   const declared = req.headers['content-length'];
@@ -89,7 +89,7 @@ async function boundedHandler(handler, request, timeoutMs) {
   } finally { clearTimeout(timer); }
 }
 
-async function staticResponse(root, name, method) {
+async function staticResponse(root, name, method, requestHeaders, revision) {
   let handle;
   try {
     const rootStat = await fs.lstat(root);
@@ -109,8 +109,17 @@ async function staticResponse(root, name, method) {
     handle = await fs.open(target, constants.O_RDONLY | (constants.O_NOFOLLOW || 0));
     const stat = await handle.stat();
     if (!stat.isFile() || stat.size > MAX_STATIC_BYTES) { await handle.close(); return failure(404); }
-    const headers = { 'Content-Type': MIME[path.extname(name)], 'Content-Length': String(stat.size),
-      'Cache-Control': 'public, max-age=0, must-revalidate' };
+    // Weak validator survives transfer compression. A new release always gets
+    // a different tag; HTML/config still revalidate instead of hiding updates.
+    const etag = `W/"${revision || 'local'}-${stat.size.toString(16)}-${stat.mtimeMs.toString(16)}"`;
+    const headers = { 'Content-Type': MIME[path.extname(name)],
+      'Cache-Control': 'public, max-age=0, must-revalidate', ETag: etag };
+    const validators = requestHeaders['if-none-match'];
+    if (typeof validators === 'string' && validators.split(',').some(value => value.trim() === '*' || value.trim().replace(/^W\//, '') === etag.replace(/^W\//, ''))) {
+      await handle.close();
+      return new Response(null, { status: 304, headers });
+    }
+    headers['Content-Length'] = String(stat.size);
     if (method === 'HEAD') { await handle.close(); return new Response(null, { headers }); }
     return new Response(Readable.toWeb(handle.createReadStream({ autoClose: true })), { headers });
   } catch {
@@ -169,7 +178,7 @@ export function createVpsServer({ distDir, seoHandler, clickHandler, imageHandle
         return failure(301, { Location: route === '/index.html' ? '/' : '/privacidade/' });
       }
       const name = route === '/' ? 'index.html' : route === '/privacidade/' ? 'privacidade/index.html' : route.slice(1);
-      return PUBLIC_SET.has(name) ? staticResponse(root, name, req.method) : failure(404);
+      return PUBLIC_SET.has(name) ? staticResponse(root, name, req.method, req.headers, revision) : failure(404);
     })().then(response => sendResponse(req, res, response)).catch(() => {
       if (!res.headersSent) sendResponse(req, res, failure(500)); else res.destroy();
     });

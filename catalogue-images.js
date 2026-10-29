@@ -23,4 +23,26 @@
       return original;
     }
   };
+
+  // SSR images already have responsive URLs before JavaScript runs. A capture
+  // listener covers later failures; the initial scan covers an early failure.
+  // The marker leaves homepage/carousel image handlers in control of their nodes.
+  if (typeof document !== 'undefined') {
+    const fallback = image => {
+      if (image?.tagName !== 'IMG' || image.dataset.catalogueFallback !== 'true' || image.dataset.originalRetried === 'true') return;
+      try {
+        const original = new URL(image.dataset.original);
+        const allowed = original.origin === publicStorage && original.pathname.startsWith('/storage/v1/object/public/imagens/')
+          || original.origin === 'https://http2.mlstatic.com';
+        if (!allowed || original.username || original.password) return;
+        image.dataset.originalRetried = 'true';
+        image.removeAttribute('srcset');
+        image.src = original.href;
+      } catch { /* Invalid fallback data never becomes a network destination. */ }
+    };
+    document.addEventListener('error', event => fallback(event.target), true);
+    document.querySelectorAll('img[data-catalogue-fallback][data-original]').forEach(image => {
+      if (image.complete && image.naturalWidth === 0) fallback(image);
+    });
+  }
 })();

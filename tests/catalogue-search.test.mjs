@@ -33,13 +33,15 @@ const item = (id, title, category = 'Outras ferramentas e acessórios', changes 
   image: `https://http2.mlstatic.com/${id}.jpg`, url: `https://meli.la/${id}`, ...changes,
 });
 
-async function setup(rows, { preview = false, generatedAt, storage, deferNetwork = false, initialTime, preloaded } = {}) {
+async function setup(rows, { preview = false, generatedAt, storage, deferNetwork = false, initialTime, preloaded, firstPage, deferFirst = false, failFirst = false, randomOrder = false } = {}) {
   let now = initialTime ?? Date.parse('2026-10-25T12:00:00Z');
   const snapshot = products => ({ generatedAt: new Date(now).toISOString(), products });
   let data = { ...snapshot(rows), ...(generatedAt ? { generatedAt } : {}) };
   let fail = false;
   let blocked = deferNetwork;
   const pending = [], requests = [];
+  const firstPending=[];
+  let firstBlocked=deferFirst;
   const selectors = ['#search', '#category', '.filters', '#products', '#result-count', '#empty',
     '.catalogue-note', '.results-meta>span', '#catalogue-search', '#reset-search', '.mobile-join'];
   const nodes = Object.fromEntries(selectors.map(selector => [selector, new Element()]));
@@ -52,11 +54,20 @@ async function setup(rows, { preview = false, generatedAt, storage, deferNetwork
   document.addEventListener('catalogue:updated', event => updates.push(Array.from(event.detail.products)));
   class Clock extends Date { static now() { return now; } }
   const context = {
-    document, window: { localStorage: storage, REFRI_CATALOGUE_PRELOAD: preloaded, REFRI_CATALOGUE: { catalogueUrl: './fixture.json', preview, maxAgeMs: 900000, refreshMs: 300000 } },
+    document, window: { localStorage: storage, REFRI_CATALOGUE_PRELOAD: preloaded, REFRI_CATALOGUE: { catalogueUrl: './fixture.json', ...(firstPage?{firstPageUrl:'/api/catalogue-first',randomOrder}:{}), preview, maxAgeMs: 900000, refreshMs: 300000 } },
     URL, Intl, Date: Clock,
     CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
     AbortSignal: { timeout: () => undefined },
-    fetch: async (url, options) => { requests.push({url, options}); if (blocked) await new Promise(resolve => pending.push(resolve)); if (fail) throw new Error('Fixture unavailable'); return { ok: true, json: async () => data }; },
+    fetch: async (url, options) => {
+      requests.push({url, options});
+      if(url==='/api/catalogue-first'){
+        if(firstBlocked)await new Promise(resolve=>firstPending.push(resolve));
+        if(failFirst)throw new Error('First page unavailable');
+        return {ok:true,json:async()=>firstPage};
+      }
+      if (blocked) await new Promise(resolve => pending.push(resolve));
+      if (fail) throw new Error('Fixture unavailable'); return { ok: true, json: async () => data };
+    },
     setTimeout: (callback, delay) => { timeouts.set(++timerId, {callback, due: now + delay, delay}); return timerId; },
     clearTimeout: id => timeouts.delete(id),
     setInterval: (callback, delay) => { intervals.set(delay, callback); return ++timerId; },
@@ -78,6 +89,8 @@ async function setup(rows, { preview = false, generatedAt, storage, deferNetwork
     advance: milliseconds => { now += milliseconds; },
     runDueTimers: () => { for (const [id, timer] of timeouts) if (timer.due <= now) { timeouts.delete(id); timer.callback(); } },
     releaseNetwork: async () => { blocked = false; pending.splice(0).forEach(resolve => resolve()); await settle(); },
+    releaseFirstPage: async () => {firstBlocked=false;firstPending.splice(0).forEach(resolve=>resolve());await settle();},
+    failPendingNetwork: async () => {fail=true;blocked=false;pending.splice(0).forEach(resolve=>resolve());await settle();},
     pauseNetwork: () => { blocked = true; },
   };
 }
@@ -446,4 +459,90 @@ test('recorded discounts survive the short cache and disappear when the feed rem
   await ui.releaseNetwork();
   assert.doesNotMatch(ui.nodes['#products'].innerHTML,/catalogue-discount|% OFF/);
   assert.deepEqual(ui.ids(),['sale']);
+});
+
+const firstSnapshot=(rows,all=rows)=>({generatedAt:new Date(epoch).toISOString(),products:rows,total:all.length,categories:[...new Set(all.map(p=>p.category))]});
+
+test('first 24 appear before the complete feed without caching or publishing a partial catalogue',async()=>{
+  const rows=Array.from({length:40},(_,i)=>item(i,`Broca ${i}`));
+  const first=rows.slice(8,32).reverse().map(p=>({...p,id:String(p.id)}));
+  const storage=memoryStorage();
+  const ui=await setup(rows,{firstPage:firstSnapshot(first,rows),deferNetwork:true,randomOrder:true,storage});
+  const firstIds=first.map(p=>String(p.id));
+  assert.deepEqual(ui.ids(),firstIds);
+  assert.match(ui.nodes['#result-count'].textContent,/24 de 40 produtos.*carregando restante/);
+  assert.equal(ui.nodes['#products'].nextElement.hidden,true);
+  assert.equal(ui.updates.length,0,'carousel only receives the complete feed');
+  assert.equal(storage.getItem(cacheKey),null);
+  assert.deepEqual(ui.requests.map(r=>r.url),['/api/catalogue-first','./fixture.json']);
+  assert.equal(ui.requests[1].options.priority,'low');
+  await ui.releaseNetwork();
+  assert.deepEqual(ui.ids(),firstIds,'numeric full IDs retain the initial string-ID order');
+  assert.equal(ui.nodes['#result-count'].textContent,'24 de 40 produtos');
+  assert.equal(ui.updates.at(-1).length,40);
+  assert.equal(JSON.parse(storage.getItem(cacheKey)).data.products.length,40);
+  ui.nodes['#products'].nextElement.dispatch('click');
+  const completeOrder=ui.ids();
+  assert.equal(new Set(completeOrder).size,40);
+  await ui.refresh([...rows].reverse());
+  assert.deepEqual(ui.ids(),completeOrder,'refresh must not reshuffle a visitor’s current results');
+  assert.equal(ui.requests.filter(r=>r.url==='/api/catalogue-first').length,1,'complete catalogue refreshes do not request an unused first page');
+});
+
+test('search and category selected during first-page loading continue across the complete feed',async()=>{
+  const rows=[item('bit','Broca de concreto','Brocas'),item('pump','Bomba de vácuo','Bombas de vácuo')];
+  const ui=await setup(rows,{firstPage:firstSnapshot(rows.slice(0,1),rows),deferNetwork:true,randomOrder:true});
+  ui.choose('Bombas de vácuo');ui.search('bomba');
+  assert.deepEqual(ui.ids(),[]);
+  assert.equal(ui.nodes['#empty'].hidden,true,'do not incorrectly declare no results while loading');
+  assert.match(ui.nodes['#result-count'].textContent,/Carregando resultados de todo o catálogo/);
+  await ui.releaseNetwork();
+  assert.deepEqual(ui.ids(),['pump']);
+  assert.equal(ui.nodes['#category'].value,'Bombas de vácuo');
+});
+
+test('a late first-page response cannot overwrite a full response or a cleared failed request',async()=>{
+  const rows=[item('live','Alicate')],first=firstSnapshot([item('old','Broca antiga')]);
+  const ui=await setup(rows,{firstPage:first,deferFirst:true,randomOrder:true});
+  assert.deepEqual(ui.ids(),['live']);
+  await ui.releaseFirstPage();
+  assert.deepEqual(ui.ids(),['live']);
+  const failed=await setup(rows,{firstPage:first,deferFirst:true,deferNetwork:true});
+  await failed.failPendingNetwork();await failed.releaseFirstPage();
+  assert.deepEqual(failed.ids(),[]);
+  assert.match(failed.nodes['.catalogue-note'].textContent,/Não foi possível obter/);
+});
+
+test('failed or invalid first pages fall back to the full feed without breaking results',async()=>{
+  const rows=[item('live','Alicate')];
+  for(const firstPage of [
+    {...firstSnapshot(rows),generatedAt:'2020-01-01T00:00:00Z'},
+    {...firstSnapshot(rows),total:0},
+    {...firstSnapshot(rows),categories:null},
+    firstSnapshot(Array.from({length:25},(_,i)=>item(i,`Broca ${i}`))),
+  ]){
+    const ui=await setup(rows,{firstPage,deferNetwork:true});
+    assert.deepEqual(ui.ids(),[]);await ui.releaseNetwork();assert.deepEqual(ui.ids(),['live']);
+  }
+  const unavailable=await setup(rows,{firstPage:firstSnapshot(rows),failFirst:true});
+  assert.deepEqual(unavailable.ids(),['live']);
+});
+
+test('full revalidation removes initial dead products and clears partial cards on failure',async()=>{
+  const live=item('live','Alicate'),dead=item('dead','Broca antiga');
+  const ui=await setup([live],{firstPage:firstSnapshot([dead,live]),deferNetwork:true,randomOrder:true});
+  assert.deepEqual(ui.ids(),['dead','live']);await ui.releaseNetwork();assert.deepEqual(ui.ids(),['live']);
+  const failed=await setup([live],{firstPage:firstSnapshot([live]),deferNetwork:true});
+  assert.deepEqual(failed.ids(),['live']);await failed.failPendingNetwork();assert.deepEqual(failed.ids(),[]);
+});
+
+test('fresh complete cache and early first-page preload do not cause duplicate or downgraded results',async()=>{
+  const row=item('live','Alicate'),first=firstSnapshot([item('old','Broca')]);
+  const storage=memoryStorage(cached([row]));
+  const preload={url:'/api/catalogue-first',request:Promise.resolve({ok:true,json:async()=>first})};
+  const ui=await setup([row],{storage,firstPage:first,preloaded:preload,deferNetwork:true});
+  assert.deepEqual(ui.ids(),['live']);
+  assert.deepEqual(ui.requests.map(r=>r.url),['./fixture.json']);
+  assert.equal(JSON.parse(storage.getItem(cacheKey)).receivedAt,epoch);
+  await ui.releaseNetwork();assert.deepEqual(ui.ids(),['live']);
 });
