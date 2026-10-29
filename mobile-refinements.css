@@ -27,6 +27,9 @@ body:has(.hero){background:var(--paper)}
 .product h3{font-size:14px}
 .spec,.product-type,.product-link{font-size:12px}
 .product-info{padding-bottom:10px}
+/* Long model names must wrap inside the card instead of widening its tracks. */
+.product>.product-photo,.product>.product-info,.product-info>*{min-width:0}
+.product h3{overflow-wrap:anywhere}
 .catalogue-note{font-size:12px}
 .transparency{display:grid;grid-template-columns:1fr 1.25fr;gap:70px;border-top:1px solid var(--line);padding-block:52px 60px}
 .transparency h2{font-size:35px;line-height:1.1}
@@ -144,8 +147,8 @@ body:has(.hero){background:var(--paper)}
 
 /* Share content tracks so optional discounts cannot misalign prices and CTAs. */
 @supports(grid-template-rows:subgrid){
-  .products>.product{display:grid;grid-row:span 5;grid-template-rows:subgrid;row-gap:0}
-  .product>.product-info{display:grid;grid-row:span 4;grid-template-rows:subgrid;row-gap:0}
+  .products>.product{display:grid;grid-template-columns:minmax(0,1fr);grid-row:span 5;grid-template-rows:subgrid;row-gap:0}
+  .product>.product-info{display:grid;grid-template-columns:minmax(0,1fr);grid-row:span 4;grid-template-rows:subgrid;row-gap:0}
   .product-info>.product-type,.product-info>h3{align-self:start}
   .product-info>.catalogue-price{margin-top:0;align-self:start}
   .product-info>.product-link{align-self:end}
