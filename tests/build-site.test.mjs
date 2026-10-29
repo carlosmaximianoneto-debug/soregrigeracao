@@ -6,7 +6,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { buildSite, PUBLIC_FILES, CATALOGUE_URL, invitationContract } from '../scripts/build-site.mjs';
 
-for (const context of ['production', 'deploy-preview', 'local-preview']) {
+for (const context of ['production', 'deploy-preview', 'local-preview', 'vps-production']) {
   test(`${context} build includes thumbnail helper and discovers the catalogue in the head`, async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'refri-build-performance-'));
     try {
@@ -36,10 +36,11 @@ for (const context of ['production', 'deploy-preview', 'local-preview']) {
       const preload = { window: {}, AbortSignal: { timeout: ms => ms }, fetch: (url, options) => { requests.push({url, options}); return pending; } };
       vm.runInNewContext(earlySource, preload);
       assert.equal(requests.length, 1);
-      assert.equal(requests[0].url, CATALOGUE_URL);
+      const initialUrl=context==='vps-production'?'/api/catalogue-first':CATALOGUE_URL;
+      assert.equal(requests[0].url, initialUrl);
       assert.equal(requests[0].options.cache, 'no-cache');
       assert.equal(requests[0].options.signal, 15000);
-      assert.equal(preload.window.REFRI_CATALOGUE_PRELOAD.url, CATALOGUE_URL);
+      assert.equal(preload.window.REFRI_CATALOGUE_PRELOAD.url, initialUrl);
       assert.equal(preload.window.REFRI_CATALOGUE_PRELOAD.request, pending);
       assert.doesNotThrow(() => vm.runInNewContext(earlySource, {window:{}}), 'normal loading remains available without fetch or timeout support');
       const config = { window: {} };
@@ -47,7 +48,9 @@ for (const context of ['production', 'deploy-preview', 'local-preview']) {
       assert.equal(config.window.REFRI_CATALOGUE.imageOptimization, context !== 'local-preview');
       assert.equal(config.window.REFRI_CATALOGUE.catalogueUrl, CATALOGUE_URL);
       assert.equal(config.window.REFRI_CATALOGUE.maxAgeMs, 900000);
-      assert.equal(html.includes('noindex,nofollow'), context !== 'production');
+      assert.equal(config.window.REFRI_CATALOGUE.firstPageUrl, context==='vps-production'?'/api/catalogue-first':undefined);
+      assert.equal(config.window.REFRI_CATALOGUE.randomOrder, context==='vps-production'?true:undefined);
+      assert.equal(html.includes('noindex,nofollow'), !['production','vps-production'].includes(context));
       assert.ok(!html.includes('service_role'));
     } finally {
       await fs.rm(root, { recursive: true, force: true });

@@ -122,22 +122,89 @@ test('a compressed image above sixteen million pixels is rejected before resize'
   assert.equal((await image(request(`${storage}large.png`))).status,413);
 });
 
-test('two in-flight sources are permitted, the third is rejected, and the slot is reusable after completion', async () => {
-  const releases=[];
-  const image=await handler({fetchImpl:()=>new Promise(resolve=>releases.push(()=>resolve(upstream())))});
+test('a burst waits in FIFO order while only two sources transform at a time', async () => {
+  const releases=[],started=[];
+  const image=await handler({fetchImpl:url=>new Promise(resolve=>{started.push(url);releases.push(()=>resolve(upstream()));})});
   const first=image(request(`${storage}1.jpg`));
   const second=image(request(`${storage}2.jpg`));
   assert.equal(releases.length,2);
-  const busy=await image(request(`${storage}3.jpg`));
+  const third=image(request(`${storage}3.jpg`));
+  const fourth=image(request(`${storage}4.jpg`));
+  assert.equal(releases.length,2,'queued sources do not allocate fetch or decoder work');
+  releases[0]();
+  assert.equal((await first).status,200);
+  assert.equal(started[2],`${storage}3.jpg`);
+  assert.equal(started.length,3,'one freed slot starts exactly one queued source');
+  releases[1]();
+  assert.equal((await second).status,200);
+  assert.equal(started[3],`${storage}4.jpg`);
+  releases[2]();releases[3]();
+  assert.equal((await third).status,200);
+  assert.equal((await fourth).status,200);
+});
+
+test('queued duplicates share one transform, a full queue rejects only new distinct images, and cached images bypass it', async () => {
+  let pause=false;
+  const releases=[],started=[];
+  const image=await handler({maxQueued:2,fetchImpl:async url=>{started.push(url);if(pause)await new Promise(resolve=>releases.push(resolve));return upstream();}});
+  assert.equal((await image(request())).status,200);
+  pause=true;
+  const first=image(request(`${storage}1.jpg`)),second=image(request(`${storage}2.jpg`));
+  const third=image(request(`${storage}3.jpg`)),duplicate=image(request(`${storage}3.jpg`));
+  const fourth=image(request(`${storage}4.jpg`));
+  assert.equal(started.length,3,'only cached prime and two active sources have fetched');
+  const busy=await image(request(`${storage}5.jpg`));
   assert.equal(busy.status,429);
   assert.equal(busy.headers.get('retry-after'),'1');
-  releases.splice(0).forEach(release=>release());
-  assert.equal((await first).status,200);
-  assert.equal((await second).status,200);
-  const third=image(request(`${storage}3.jpg`));
-  assert.equal(releases.length,1);
-  releases[0]();
-  assert.equal((await third).status,200);
+  assert.equal((await image(request())).status,200,'cached image bypasses both active and waiting limits');
+  releases[0]();releases[1]();
+  assert.equal((await first).status,200);assert.equal((await second).status,200);
+  releases[2]();releases[3]();
+  const [a,b,c]=await Promise.all([third,duplicate,fourth]);
+  assert.equal(a.status,200);assert.equal(b.status,200);assert.equal(c.status,200);
+  assert.equal(started.filter(url=>url===`${storage}3.jpg`).length,1);
+  assert.deepEqual(Buffer.from(await a.arrayBuffer()),Buffer.from(await b.arrayBuffer()));
+});
+
+test('expired queued requests never start later and release their queue entries for new work', async () => {
+  const releases=[],started=[];
+  const image=await handler({queueTimeoutMs:30,maxQueued:1,fetchImpl:url=>new Promise(resolve=>{started.push(url);releases.push(()=>resolve(upstream()));})});
+  const first=image(request(`${storage}1.jpg`)),second=image(request(`${storage}2.jpg`));
+  const expired=await image(request(`${storage}3.jpg`));
+  assert.equal(expired.status,429);
+  assert.equal(expired.headers.get('cache-control'),'no-store');
+  const fourth=image(request(`${storage}4.jpg`));
+  releases[0]();releases[1]();
+  await Promise.all([first,second]);
+  assert.deepEqual(started,[`${storage}1.jpg`,`${storage}2.jpg`,`${storage}4.jpg`]);
+  releases[2]();
+  assert.equal((await fourth).status,200);
+});
+
+test('timed-out upstream work retains its slot until it settles; queued work cannot exceed concurrency', async () => {
+  let calls=0;
+  const rejecters=[];
+  const image=await handler({timeoutMs:40,queueTimeoutMs:15,fetchImpl:async()=>{
+    calls++;
+    await new Promise((_resolve,reject)=>rejecters.push(reject));
+    return upstream();
+  }});
+  const first=image(request(`${storage}1.jpg`)),second=image(request(`${storage}2.jpg`));
+  assert.equal((await first).status,504);assert.equal((await second).status,504);
+  assert.equal((await image(request(`${storage}3.jpg`))).status,429);
+  assert.equal(calls,2,'an ignored abort must not create another upstream worker');
+  rejecters.forEach(reject=>reject(new Error('upstream finally settled')));
+  await new Promise(resolve=>setImmediate(resolve));
+  const next=image(request(`${storage}4.jpg`));
+  assert.equal(calls,3,'settled work releases its slot');
+  rejecters[2](new Error('test cleanup'));
+  assert.equal((await next).status,502);
+});
+
+test('queue and cache limits cannot expand beyond the shared VPS budget', async () => {
+  for(const options of [{queueTimeoutMs:1501},{queueTimeoutMs:0},{maxQueued:25},{maxQueued:0},{maxCacheEntries:257}]) {
+    await assert.rejects(handler(options),/Invalid/);
+  }
 });
 
 test('identical concurrent requests share one transform but return independently readable responses', async () => {

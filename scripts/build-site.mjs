@@ -49,8 +49,10 @@ export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 
   const content = new Map(await Promise.all(PUBLIC_FILES.map(async name => [name, await fs.readFile(path.join(root, name))])));
   const original = content.get('index.html').toString('utf8');
   const invite = invitationContract(original);
-  // catalogue.js consumes this same request. Start before CSS/scripts, without a second preload fetch.
-  const catalogueURLLiteral = JSON.stringify(CATALOGUE_URL).replace(/</g, '\\u003c');
+  // VPS starts with a small first page; catalogue.js loads the complete feed in
+  // the background. Other deployments keep their direct public-feed fallback.
+  const firstPageUrl = context === 'vps-production' ? '/api/catalogue-first' : undefined;
+  const catalogueURLLiteral = JSON.stringify(firstPageUrl || CATALOGUE_URL).replace(/</g, '\\u003c');
   const catalogueHints = `<link rel="preconnect" href="${new URL(CATALOGUE_URL).origin}" crossorigin><script id="catalogue-preload-script">(()=>{try{if(typeof fetch!=='function'||typeof AbortSignal==='undefined'||typeof AbortSignal.timeout!=='function')return;const url=${catalogueURLLiteral},request=fetch(url,{cache:'no-cache',signal:AbortSignal.timeout(15000)});request.catch(()=>{});window.REFRI_CATALOGUE_PRELOAD={url,request};}catch{}})();</script>`;
   const html = (production ? productionHTML(original) : original).replace('<head>', `<head>${catalogueHints}`);
   if (invitationContract(html) !== invite) throw new Error('O build alterou o convite gerenciado pelo publicador.');
@@ -60,7 +62,7 @@ export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 
     if (!PUBLIC_FILES.includes(asset)) throw new Error(`Asset fora da lista pública: ${asset}`);
   }
   const imageProvider = context === 'vps-production' ? 'vps' : ['production', 'deploy-preview', 'branch-deploy'].includes(context) ? 'netlify' : 'original';
-  const browserOptions = { catalogueUrl: CATALOGUE_URL, preview: !production, maxAgeMs: 15 * 60_000, refreshMs: 5 * 60_000, imageOptimization: imageProvider !== 'original', imageProvider };
+  const browserOptions = { catalogueUrl: CATALOGUE_URL, ...(firstPageUrl ? {firstPageUrl, randomOrder:true} : {}), preview: !production, maxAgeMs: 15 * 60_000, refreshMs: 5 * 60_000, imageOptimization: imageProvider !== 'original', imageProvider };
   const serverOptions = { snapshotURL: CATALOGUE_URL, production, base: production ? SITE_URL : '', invitationURL: invite };
   // The resolved target above is exactly <project>/dist; source files are untouched.
   if (outputStat) await fs.rm(output, { recursive: true });

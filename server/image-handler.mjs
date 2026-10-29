@@ -56,13 +56,15 @@ function magicFormat(bytes) {
   return null;
 }
 
-export function createImageHandler({fetchImpl=globalThis.fetch,now=Date.now,timeoutMs=8000,cacheTTLms=3_600_000,maxCacheBytes=MAX_CACHE_BYTES,maxCacheEntries=64}={}) {
+export function createImageHandler({fetchImpl=globalThis.fetch,now=Date.now,timeoutMs=8000,queueTimeoutMs=1500,maxQueued=24,cacheTTLms=3_600_000,maxCacheBytes=MAX_CACHE_BYTES,maxCacheEntries=256}={}) {
   boundedInteger(timeoutMs,8000,'timeout');
+  boundedInteger(queueTimeoutMs,1500,'queue timeout');
+  boundedInteger(maxQueued,24,'queue limit');
   boundedInteger(cacheTTLms,3_600_000,'cache lifetime');
   boundedInteger(maxCacheBytes,MAX_CACHE_BYTES,'cache byte limit');
-  boundedInteger(maxCacheEntries,64,'cache entry limit');
+  boundedInteger(maxCacheEntries,256,'cache entry limit');
   if(typeof fetchImpl!=='function'||typeof now!=='function')throw new TypeError('Invalid image handler dependencies.');
-  const cache=new Map(),inFlight=new Map();
+  const cache=new Map(),inFlight=new Map(),queue=new Map();
   let cacheBytes=0,active=0;
   function drop(key){const value=cache.get(key);if(value){cacheBytes-=value.bytes.length;cache.delete(key);}}
   function cached(key){
@@ -131,10 +133,31 @@ export function createImageHandler({fetchImpl=globalThis.fetch,now=Date.now,time
     })();
     const pending=Promise.race([work,timeout]).then(value=>({value}),error=>({status:error instanceof ImageFailure?error.status:/pixel limit/i.test(error?.message||'')?413:/timeout/i.test(error?.message||'')?504:502}));
     inFlight.set(key,pending);
-    const finish=()=>{clearTimeout(timer);active--;if(inFlight.get(key)===pending)inFlight.delete(key);};
+    const finish=()=>{clearTimeout(timer);active--;if(inFlight.get(key)===pending)inFlight.delete(key);drain();};
     // Both handlers consume rejection; a timed-out native task is never detached
     // from its slot or left as an unhandled promise.
     work.then(finish,finish);
+    return pending;
+  }
+  function drain() {
+    while(active<2&&queue.size){
+      const [key,entry]=queue.entries().next().value;
+      queue.delete(key);clearTimeout(entry.timer);
+      entry.resolve(start(entry.input));
+    }
+  }
+  function enqueue(input) {
+    if(queue.size>=maxQueued)return Promise.resolve({status:429});
+    let resolve;
+    const pending=new Promise(done=>{resolve=done;});
+    const entry={input,resolve,timer:setTimeout(()=>{
+      queue.delete(input.key);
+      if(inFlight.get(input.key)===pending)inFlight.delete(input.key);
+      resolve({status:429});
+    },queueTimeoutMs)};
+    queue.set(input.key,entry);inFlight.set(input.key,pending);
+    // A short bounded wait absorbs the initial card burst without increasing
+    // decoder concurrency. Wait + transform remains below the HTTP 10s limit.
     return pending;
   }
   return async request=>{
@@ -143,7 +166,7 @@ export function createImageHandler({fetchImpl=globalThis.fetch,now=Date.now,time
     const value=cached(input.key);
     if(value)return success(value);
     let pending=inFlight.get(input.key);
-    if(!pending){if(active>=2)return fail(429);pending=start(input);}
+    if(!pending)pending=active>=2?enqueue(input):start(input);
     const result=await pending;
     return result.value?success(result.value):fail(result.status);
   };
