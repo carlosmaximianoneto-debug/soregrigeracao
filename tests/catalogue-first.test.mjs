@@ -44,10 +44,14 @@ test('initial page selects only24 public products, rotates deterministically and
 
 test('unknown external destinations are never returned and source secrets remain absent',async()=>{
   const f=fixture({products:[...rows.slice(0,2),{...rows[2],url:'https://example.net/nope'},
-    {...rows[3],image:'https://example.net/p.png'}]});
+    {...rows[3],image:'https://example.net/p.png'},
+    {...rows[4],url:['https://meli.la/not-a-string']}]});
   const data=await (await f.handler(request())).json();
   assert.equal(data.total,2);assert.equal(data.products.length,2);
   assert.doesNotMatch(JSON.stringify(data),/internalNote|never expose|example.net/);
+  const catalogue=await f.handler(request('/catalogo/'));
+  assert.equal(catalogue.status,200);
+  assert.doesNotMatch(await catalogue.text(),/example\.net|alicate-profissional-[34]-[34]/i);
 });
 
 test('an expired cached snapshot is not served after failure; freshness deadline is not renewed',async()=>{
