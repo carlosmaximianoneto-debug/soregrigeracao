@@ -9,18 +9,22 @@ import { articlesB } from './blog/articles-b.mjs';
 // Keep this file beside seo-runtime.mjs and include categories.js in its function bundle.
 const CACHE_MS = 30_000;
 const MAX_SNAPSHOT_AGE_MS = 15 * 60_000;
+const LOCAL_IMAGE = /^\/?assets\/[a-zA-Z0-9_.-]+\.(?:jpg|jpeg|png|webp)$/i;
+function allowed(value, image = false) {
+  if (typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port || url.hash) return false;
+    if (!image) return /(^|\.)(?:meli\.la|mercadolivre\.com\.br|mercadolibre\.com)$/.test(url.hostname);
+    return /\.(?:jpe?g|png|webp)$/i.test(url.pathname) && (
+      (url.hostname === 'xlwiwxaghbkdwbtwagwo.supabase.co' && url.pathname.startsWith('/storage/v1/object/public/imagens/'))
+      || /(^|\.)mlstatic\.com$/.test(url.hostname));
+  } catch { return false; }
+}
 // Only public catalogue fields cross this boundary. The small first page shares
 // the SEO snapshot cache and its deadline; it never queries private tables.
 function firstPage(snapshot, renderer) {
   const originals = new Map(snapshot.products.map(row => [String(row.id), row]));
-  const allowed = (value, image = false) => {
-    try {
-      const url = new URL(value);
-      return url.protocol === 'https:' && !url.username && !url.password && !url.port
-        && (image ? /(^|\.)(supabase\.co|mlstatic\.com)$/.test(url.hostname)
-          : /(^|\.)(meli\.la|mercadolivre\.com\.br|mercadolibre\.com)$/.test(url.hostname));
-    } catch { return false; }
-  };
   const generatedAt = renderer.snapshotDate.toISOString();
   const rows = renderer.products.filter(row => allowed(row.url) && allowed(row.image, true)).map(row => {
     const original = originals.get(row.id);
@@ -65,8 +69,11 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       const snapshot = JSON.parse(body);
       const sourceTime = Date.parse(snapshot.generatedAt);
       if (!Number.isFinite(sourceTime) || now() - sourceTime > MAX_SNAPSHOT_AGE_MS || sourceTime - now() > 60_000) throw new Error('O snapshot público está atrasado ou tem data inválida.');
-      const renderer = createSeoRenderer(snapshot, options, categorySource);
-      cached = { renderer, firstPage: firstPage(snapshot, renderer), expiresAt: Math.min(now() + CACHE_MS, sourceTime + MAX_SNAPSHOT_AGE_MS) };
+      // Discard offsite destinations before one bad row can disable all SEO pages.
+      const safeSnapshot = { ...snapshot, products: snapshot.products.filter(row => row && allowed(row.url)
+        && (allowed(row.image, true) || (typeof row.image === 'string' && LOCAL_IMAGE.test(row.image)))) };
+      const renderer = createSeoRenderer(safeSnapshot, options, categorySource);
+      cached = { renderer, firstPage: firstPage(safeSnapshot, renderer), expiresAt: Math.min(now() + CACHE_MS, sourceTime + MAX_SNAPSHOT_AGE_MS) };
       return cached;
     })();
     try { return await pending; } finally { pending = null; }

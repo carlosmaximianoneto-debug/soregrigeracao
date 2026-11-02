@@ -53,12 +53,9 @@ test('product hero loads eagerly with high priority; related images remain lazy 
   assert.match(html, /property="og:image" content="https:\/\/xlwiwxaghbkdwbtwagwo\.supabase\.co/);
 });
 
-test('previews and sources outside the exact transform contract keep the original image', () => {
+test('approved sources outside the exact transform contract keep the original image', () => {
   const originals = [
-    '/assets/example.jpg', 'https://other.supabase.co/storage/v1/object/public/imagens/photo.jpg',
-    `${storage.replace('/imagens/', '/other/')}photo.jpg`, 'https://example.com/photo.jpg',
-    'https://http2.mlstatic.com.evil.example/photo.jpg', 'https://http2.mlstatic.com:8443/photo.jpg',
-    'https://http2.mlstatic.com/photo.svg', 'https://http2.mlstatic.com/photo%20new.jpg',
+    '/assets/example.jpg', 'https://http2.mlstatic.com/photo%20new.jpg',
     `https://http2.mlstatic.com/photo.jpg?${'x'.repeat(520)}`,
   ];
   for (const image of originals) {
@@ -67,6 +64,12 @@ test('previews and sources outside the exact transform contract keep the origina
     assert.equal(img.srcset, undefined, image);
     assert.equal(img['data-original'], undefined, image);
   }
+  for (const image of [
+    'https://other.supabase.co/storage/v1/object/public/imagens/photo.jpg',
+    `${storage.replace('/imagens/', '/other/')}photo.jpg`, 'https://example.com/photo.jpg',
+    'https://http2.mlstatic.com.evil.example/photo.jpg', 'https://http2.mlstatic.com:8443/photo.jpg',
+    'https://http2.mlstatic.com/photo.svg',
+  ]) assert.throws(() => render([row(1, image)]), /Produto inválido/, image);
   const preview = render([row(1)], false), html = preview.render(preview.products[0].route);
   assert.equal(imageTags(html)[0].src, photo);
   assert.ok(!html.includes('src="/catalogue-images.js"'));

@@ -40,12 +40,19 @@ function imageAttributes(original, detail = false) {
   return `src="${escapeHTML(image(detail ? 800 : 400))}" srcset="${widths.map(width => `${escapeHTML(image(width))} ${width}w`).join(', ')}" sizes="${sizes}" data-original="${escapeHTML(original)}" data-catalogue-fallback="true"`;
 }
 const decimalPrice = new Intl.NumberFormat('en-US', { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const safeURL = (value, { local = false } = {}) => {
+const safeURL = (value, { local = false, image = false } = {}) => {
   if (typeof value !== 'string') return '';
   if (local && /^\/?assets\/[a-zA-Z0-9_.-]+\.(?:jpg|jpeg|png|webp)$/i.test(value)) return `/${value.replace(/^\//, '')}`;
   try {
     const parsed = new URL(value);
-    return parsed.protocol === 'https:' && !parsed.username && !parsed.password ? parsed.href : '';
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.port || parsed.hash) return '';
+    if (image) {
+      const approvedStorage = parsed.hostname === 'xlwiwxaghbkdwbtwagwo.supabase.co'
+        && parsed.pathname.startsWith('/storage/v1/object/public/imagens/');
+      const approvedMarketplaceImage = /(^|\.)mlstatic\.com$/.test(parsed.hostname);
+      return (approvedStorage || approvedMarketplaceImage) && /\.(?:jpe?g|png|webp)$/i.test(parsed.pathname) ? parsed.href : '';
+    }
+    return /(^|\.)(?:meli\.la|mercadolivre\.com\.br|mercadolibre\.com)$/.test(parsed.hostname) ? parsed.href : '';
   } catch { return ''; }
 };
 const snapshotDate = new Date(source.generatedAt);
@@ -59,7 +66,7 @@ const products = source.products.map((row, index) => {
   const id = String(row.id ?? '').trim();
   const title = String(row.title ?? '').trim();
   const url = safeURL(row.url);
-  const image = safeURL(row.image, { local: true });
+  const image = safeURL(row.image, { local: true, image: true });
   if (!/^[a-zA-Z0-9_-]+$/.test(id) || !title || !url || !image) throw new Error(`Produto inválido na posição ${index}: id, título, URL HTTPS e imagem são obrigatórios.`);
   if (seen.has(id)) throw new Error(`ID repetido no snapshot: ${id}`);
   seen.add(id);

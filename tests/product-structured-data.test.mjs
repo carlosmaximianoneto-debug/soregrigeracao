@@ -117,7 +117,8 @@ test('catalogue, categories and pagination keep simple ItemLists without nested 
 });
 
 test('unsafe product URLs cannot become Offer destinations and script-like titles remain data', () => {
-  for (const url of ['javascript:alert(1)', 'http://example.com/item', 'https://user:pass@example.com/item']) {
+  for (const url of ['javascript:alert(1)', 'http://example.com/item', 'https://user:pass@example.com/item',
+    'https://evil.example/item', 'https://meli.la.evil.example/item']) {
     assert.throws(() => rendererFor([product({ url })]), /Produto inválido/);
   }
   const title = 'Ferramenta </script><script>alert("injection")</script>';
@@ -127,6 +128,16 @@ test('unsafe product URLs cannot become Offer destinations and script-like title
   const item = typedNodes(graphOf(html), 'Product')[0];
   assert.equal(item.name, title);
   assert.equal(item.offers?.url, productURL);
+});
+
+test('product pages reject offsite images and retain approved catalogue image hosts', () => {
+  for (const image of ['https://evil.example/image.jpg', 'https://http2.mlstatic.com.evil.example/image.jpg',
+    'https://other-project.supabase.co/storage/v1/object/public/imagens/image.jpg']) {
+    assert.throws(() => rendererFor([product({ image })]), /Produto inválido/);
+  }
+  const image = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/imagens/image.jpg';
+  const renderer = rendererFor([product({ image })]);
+  assert.match(renderer.render(renderer.products[0].route), /data-original="https:\/\/xlwiwxaghbkdwbtwagwo\.supabase\.co\/storage\/v1\/object\/public\/imagens\/image\.jpg"/);
 });
 
 test('live handler refresh changes schema price and removes offers when source has no valid price', async () => {
