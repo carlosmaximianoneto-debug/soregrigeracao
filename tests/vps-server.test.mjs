@@ -271,3 +271,15 @@ integration('image queries reach only the image handler; HEAD suppresses body an
   assert.doesNotMatch(error.text, /secret-path-and-key|Error:|stack/);
   assert.equal(error.headers['cache-control'], 'no-store');
 });
+
+integration('self-hosted fonts are served as woff2 with an immutable cache', async t => {
+  const {port,distDir}=await fixture(t);
+  const filename='assets/blog/fonts/inter-3100e775e8.woff2';
+  await fs.mkdir(path.join(distDir,'assets/blog/fonts'),{recursive:true});
+  await fs.writeFile(path.join(distDir,filename),'font bytes');
+  await fs.writeFile(path.join(distDir,'assets/blog/fonts/other.woff2'),'not published');
+  const result=await request(port,'/'+filename);
+  assert.equal(result.status,200);assert.equal(result.headers['content-type'],'font/woff2');
+  assert.equal(result.headers['cache-control'],'public, max-age=31536000, immutable');
+  assert.equal((await request(port,'/assets/blog/fonts/other.woff2')).status,404);
+});

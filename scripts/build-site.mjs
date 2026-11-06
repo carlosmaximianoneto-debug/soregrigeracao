@@ -1,14 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { publisherSchema } from '../site-identity.mjs';
+import { publisherSchema, fontHead, FONT_FILES } from '../site-identity.mjs';
 import { BLOG_COVER_FILES } from '../blog/covers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const SITE_URL = 'https://sorefrigeracao.com';
 export const CATALOGUE_URL = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/refri-catalogue/catalogue.json';
 export const PUBLIC_FILES = Object.freeze([
-  ...BLOG_COVER_FILES,
+  ...BLOG_COVER_FILES, ...FONT_FILES,
   'index.html', 'site-clicks.js', 'blog-clicks.js', 'blog.css', 'privacidade/index.html', 'styles.css', 'mobile-refinements.css', 'carousel.css',
   'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js', 'seo-pages.css',
   'assets/produto_149.jpg', 'assets/produto_263.jpg',
@@ -33,7 +33,11 @@ export function faqSchema(source) {
   return mainEntity.length ? { '@type': 'FAQPage', '@id': `${SITE_URL}/#faq`, inLanguage: 'pt-BR', mainEntity } : null;
 }
 
+// Troca o Google Fonts (bloqueava a primeira tela) pelas fontes do próprio site.
+export const withLocalFonts = html => html.replace("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"><link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin><link href=\"https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap\" rel=\"stylesheet\">", () => fontHead());
+
 export function productionHTML(source) {
+  source = withLocalFonts(source);
   const faq = faqSchema(source);
   const structuredData = { '@context': 'https://schema.org', '@graph': [
     { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'Só Refrigeração', url: `${SITE_URL}/`, inLanguage: 'pt-BR', publisher: { '@id': `${SITE_URL}/#organization` } },
@@ -68,7 +72,7 @@ export async function buildSite({ root = ROOT, context = process.env.CONTEXT || 
   const firstPageUrl = context === 'vps-production' ? '/api/catalogue-first' : undefined;
   const catalogueURLLiteral = JSON.stringify(firstPageUrl || CATALOGUE_URL).replace(/</g, '\\u003c');
   const catalogueHints = `<link rel="preconnect" href="${new URL(CATALOGUE_URL).origin}" crossorigin><script id="catalogue-preload-script">(()=>{try{if(typeof fetch!=='function'||typeof AbortSignal==='undefined'||typeof AbortSignal.timeout!=='function')return;const url=${catalogueURLLiteral},request=fetch(url,{cache:'no-cache',signal:AbortSignal.timeout(15000)});request.catch(()=>{});window.REFRI_CATALOGUE_PRELOAD={url,request};}catch{}})();</script>`;
-  const html = (production ? productionHTML(original) : original).replace('<head>', `<head>${catalogueHints}`);
+  const html = (production ? productionHTML(original) : withLocalFonts(original)).replace('<head>', `<head>${catalogueHints}`);
   if (invitationContract(html) !== invite) throw new Error('O build alterou o convite gerenciado pelo publicador.');
   if (Buffer.byteLength(html) >= 250_000) throw new Error('HTML excede o limite do publicador de convites.');
   if (!production && !html.includes('noindex,nofollow')) throw new Error('A prévia precisa continuar noindex.');

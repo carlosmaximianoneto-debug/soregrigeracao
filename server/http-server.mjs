@@ -4,13 +4,14 @@ import { constants } from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { BLOG_COVER_FILES } from '../blog/covers.mjs';
+import { FONT_FILES } from '../site-identity.mjs';
 
 const ORIGIN = 'https://sorefrigeracao.com';
 const MAX_BODY_BYTES = 512;
 const MAX_STATIC_BYTES = 10 * 1024 * 1024;
 // Public artifacts only. A file being present in dist does not make it public.
 export const PUBLIC_FILES = Object.freeze([
-  ...BLOG_COVER_FILES,
+  ...BLOG_COVER_FILES, ...FONT_FILES,
   'index.html', 'site-config.js', 'site-clicks.js', 'blog-clicks.js', 'blog.css', 'privacidade/index.html',
   'styles.css', 'mobile-refinements.css', 'carousel.css', 'floating-join.css', 'seo-pages.css',
   'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js',
@@ -21,7 +22,7 @@ export const PUBLIC_FILES = Object.freeze([
 const PUBLIC_SET = new Set(PUBLIC_FILES);
 const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp' });
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2' });
 const SECURITY_HEADERS = Object.freeze({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer', 'Permissions-Policy': 'camera=(), microphone=(), geolocation=()' });
 

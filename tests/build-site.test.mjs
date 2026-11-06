@@ -31,7 +31,8 @@ for (const context of ['production', 'deploy-preview', 'local-preview', 'vps-pro
       const earlySource = head.match(/<script id="catalogue-preload-script">([\s\S]*?)<\/script>/)?.[1];
       assert.equal(typeof earlySource, 'string');
       assert.ok(head.indexOf('id="catalogue-preload-script"') < head.indexOf('rel="stylesheet"'));
-      assert.ok(!head.includes('rel="preload"'), 'the early fetch must be the only catalogue request');
+      // Fontes podem ser pré-carregadas; o catálogo, não: a busca antecipada é a única requisição dele.
+      assert.ok(![...head.matchAll(/<link rel="preload"[^>]*>/g)].some(m => !/as="font" type="font\/woff2"/.test(m[0]) || /catalogue|supabase/.test(m[0])), 'the early fetch must be the only catalogue request');
       const requests = [], pending = new Promise(() => {});
       const preload = { window: {}, AbortSignal: { timeout: ms => ms }, fetch: (url, options) => { requests.push({url, options}); return pending; } };
       vm.runInNewContext(earlySource, preload);

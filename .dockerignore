@@ -45,6 +45,8 @@ assets/**
 !assets/compartilhamento.png
 !assets/blog/
 assets/blog/**
+!assets/blog/fonts/
+!assets/blog/fonts/*.woff2
 !assets/blog/ferramentas-para-refrigerista-kit-iniciante-v1-640.webp
 !assets/blog/ferramentas-para-refrigerista-kit-iniciante-v1-1200.webp
 !assets/blog/ferramentas-para-refrigerista-kit-iniciante-v1.jpg
