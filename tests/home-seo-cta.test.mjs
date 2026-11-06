@@ -41,3 +41,11 @@ test('production home exposes the visible FAQ as FAQPage', () => {
   assert.equal(faq.mainEntity[0]['@type'], 'Question');
   assert.doesNotMatch(faq.mainEntity[0].acceptedAnswer.text, /<|\+$/);
 });
+
+test('the empty grid reserves the first page height only while the first load is pending', () => {
+  const css = fs.readFileSync(new URL('../mobile-refinements.css', import.meta.url), 'utf8');
+  const rules = [...css.matchAll(/\.products\[aria-busy="true"\]:empty\{min-height:(\d+)px\}/g)].map(m => Number(m[1]));
+  assert.equal(rules.length, 3);
+  // Abaixo da altura medida (desktop 2816px, celular 5745px): reservar a mais também causaria pulo.
+  assert.ok(rules.every(h => h >= 2400 && h <= 5600), String(rules));
+});

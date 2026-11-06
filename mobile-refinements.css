@@ -170,3 +170,8 @@ body:has(.hero){background:var(--paper)}
 /* Rótulo do botão do card: completo no desktop, uma linha no celular. */
 .product-link .cta-short{display:none}
 @media(max-width:700px){.product-link .cta-long{display:none}.product-link .cta-short{display:inline}}
+/* Reserva a altura da primeira página de produtos enquanto ela carrega, para o que
+   vem abaixo (categorias, passo a passo) não pular. Valores abaixo do medido. */
+.products[aria-busy="true"]:empty{min-height:2600px}
+@media(max-width:1000px){.products[aria-busy="true"]:empty{min-height:3600px}}
+@media(max-width:700px){.products[aria-busy="true"]:empty{min-height:5300px}}
