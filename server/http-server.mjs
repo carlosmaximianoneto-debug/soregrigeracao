@@ -39,6 +39,8 @@ function safeRoute(target) {
   return route;
 }
 
+const isAssetRoute = route => route.startsWith('/assets/') || /(?:^|\/)\./.test(route)
+  || /\.(?:css|js|mjs|cjs|map|json|txt|xml|png|jpe?g|webp|gif|svg|ico|woff2?|ttf|env|ts|py|sh|zip|gz)$/i.test(route);
 const hasBody = req => Boolean(req.headers['transfer-encoding']) || Number(req.headers['content-length'] || 0) > 0;
 const isSeo = route => /^\/(?:blog|produtos|categorias|catalogo|seo)(?:\/|$)/.test(route)
   || route === '/sitemap.xml' || route === '/robots.txt' || route === '/api/catalogue-first';
@@ -183,7 +185,10 @@ export function createVpsServer({ distDir, seoHandler, clickHandler, blogClickHa
         return failure(301, { Location: route === '/index.html' ? '/' : '/privacidade/' });
       }
       const name = route === '/' ? 'index.html' : route === '/privacidade/' ? 'privacidade/index.html' : route.slice(1);
-      return PUBLIC_SET.has(name) ? staticResponse(root, name, req.method, req.headers, revision) : failure(404);
+      if (PUBLIC_SET.has(name)) return staticResponse(root, name, req.method, req.headers, revision);
+      // Pages get the branded 404; assets, dotfiles and source files stay an empty 404.
+      if (typeof seoHandler.notFound === 'function' && !isAssetRoute(route)) return seoHandler.notFound(req.method);
+      return failure(404);
     })().then(response => sendResponse(req, res, response)).catch(() => {
       if (!res.headersSent) sendResponse(req, res, failure(500)); else res.destroy();
     });

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createSeoRenderer, validateSeoOptions } from './seo-runtime.mjs';
+import { fontHead } from './site-identity.mjs';
 import { createBlogRenderer } from './blog-runtime.mjs';
 import { articlesA } from './blog/articles-a.mjs';
 import { articlesB } from './blog/articles-b.mjs';
@@ -39,13 +40,17 @@ function firstPage(snapshot, renderer) {
   ranked.sort((a, b) => a.rank.localeCompare(b.rank));
   return { generatedAt, total: rows.length, categories, products: ranked.slice(0, 24).map(entry => entry.row) };
 }
+const snowflake = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#91dce5"/><g fill="none" stroke="#10232d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M32 9v46M12 20l40 24M12 44l40-24M24 13l8 8 8-8M24 51l8-8 8 8M12 29l10-3-2-10M52 35l-10 3 2 10M20 48l2-10-10-3M44 16l-2 10 10 3"/></g></svg>';
+const whatsappIcon = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M20.5 3.5A11.9 11.9 0 0 0 12 0C5.4 0 0 5.4 0 12c0 2.1.6 4.2 1.6 6L0 24l6.2-1.6A12 12 0 0 0 12 24c6.6 0 12-5.4 12-12 0-3.2-1.2-6.2-3.5-8.5ZM12 22a10 10 0 0 1-5.1-1.4l-.4-.2-3.7 1 1-3.6-.3-.4A10 10 0 0 1 2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 10 10c0 5.5-4.5 10-10 10Zm5.5-7.5c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-1 1.2-.2.2-.4.2-.7.1-1.7-.9-2.8-1.6-4-3.5-.3-.5.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7s1.2 3.1 1.4 3.3c.2.2 2.4 3.7 5.8 5.2 2.2.9 3 .9 4 .8.6-.1 1.8-.8 2-1.5.3-.8.3-1.4.2-1.5-.1-.2-.3-.3-.6-.4Z"/></svg>';
 const RESPONSE_HEADERS = {
   'Content-Type': 'text/html; charset=utf-8',
   'Cache-Control': 'no-store',
   'Netlify-CDN-Cache-Control': 'no-store',
   'X-Content-Type-Options': 'nosniff',
 };
-const message = (title, description) => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${title} | Só Refrigeração</title><link rel="stylesheet" href="/seo-pages.css"></head><body><main class="wrap collection-heading"><p class="eyebrow">SÓ REFRIGERAÇÃO</p><h1>${title}</h1><p class="lead">${description}</p><a class="text-link" href="/catalogo/">Voltar ao catálogo</a></main></body></html>`;
+// Error pages keep the site's header, a way back to the catalogue and the group.
+// No click script here: visits to broken links must not count as catalogue views.
+const message = (title, description, invitationURL = '/?direto=1') => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#10232d"><title>${title} | Só Refrigeração</title><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">${fontHead()}<link rel="stylesheet" href="/seo-pages.css"></head><body><header class="site-header"><div class="wrap header-inner"><a class="brand" href="/" aria-label="Só Refrigeração, início">${snowflake}<span>SÓ REFRIGERAÇÃO<small>FERRAMENTAS PARA QUEM É DA ÁREA</small></span></a><nav aria-label="Principal"><a href="/catalogo/">Catálogo</a><a href="/#catalogo">Buscar ferramenta</a></nav></div></header><main id="conteudo" class="wrap not-found"><section class="collection-heading"><p class="eyebrow">SÓ REFRIGERAÇÃO</p><h1>${title}</h1><p class="lead">${description}</p><a class="primary-button not-found-button" href="/catalogo/"><span>Ver o catálogo de ferramentas</span><span aria-hidden="true">→</span></a></section><section class="group-join" aria-label="Ofertas no WhatsApp"><p class="group-join-title">Receba as ofertas de ferramentas no WhatsApp</p><a class="group-join-button" href="${invitationURL}" target="_blank" rel="noopener noreferrer">${whatsappIcon}<span>Entrar no grupo grátis</span><span class="sr-only"> (abre em nova aba)</span></a><p class="group-join-note">Sem custo para entrar. Saia quando quiser.</p></section></main></body></html>`;
 
 export function createSeoHandler({ snapshotURL, categorySource, base = '', production = false, invitationURL, fetchImpl = fetch, now = Date.now } = {}) {
   const options = validateSeoOptions({ production, base, invitationURL });
@@ -79,13 +84,14 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
     try { return await pending; } finally { pending = null; }
   }
 
-  return async function handler(request) {
+  const page = (title, description) => message(title, description, options.invitationURL);
+  const handler = async function handler(request) {
     const requestURL = new URL(request.url);
     const route = requestURL.pathname;
     const headers = { ...RESPONSE_HEADERS, ...(!options.production ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}) };
     const reply = (body, status = 200, extra = {}) => new Response(request.method === 'HEAD' ? null : body, { status, headers: { ...headers, ...extra } });
     if (!['GET', 'HEAD'].includes(request.method)) return reply('Método não permitido.', 405, { Allow: 'GET, HEAD' });
-    const missing = () => reply(message('Página não encontrada', 'Use o catálogo para encontrar uma ferramenta.'), 404);
+    const missing = () => reply(page('Página não encontrada', 'Use o catálogo para encontrar uma ferramenta.'), 404);
     if (/%|\/\.|\\|\/\//.test(route)) return missing();
     // Editorial pages are versioned with the release and work even when the
     // product feed is unavailable. Never fetch Supabase to render an article.
@@ -110,7 +116,7 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       if (initialPage) return reply(JSON.stringify(current.firstPage), 200, { 'Content-Type': 'application/json; charset=utf-8', 'X-Robots-Tag': 'noindex, nofollow' });
       const { renderer } = current;
       if (publicRoute === '/sitemap.xml') {
-        if (!renderer.sitemap) return reply(message('Página não encontrada', 'O mapa do site fica disponível após a configuração do domínio.'), 404);
+        if (!renderer.sitemap) return reply(page('Página não encontrada', 'O mapa do site fica disponível após a configuração do domínio.'), 404);
         if (route !== '/sitemap.xml') return reply('', 301, { Location: '/sitemap.xml' });
         return reply(renderer.sitemap.replace('</urlset>', `${blog.sitemapEntries}</urlset>`), 200, { 'Content-Type': 'application/xml; charset=utf-8' });
       }
@@ -130,11 +136,14 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       }
       const renamed = renderer.replacementRoute(normalRoute);
       if (renamed) return reply('', 301, { Location: renamed });
-      return reply(message('Produto ou página não encontrado', 'Este item não está no catálogo atual. Explore as categorias para encontrar outras opções.'), 404);
+      return reply(page('Produto ou página não encontrado', 'Este item não está no catálogo atual. Explore as categorias para encontrar outras opções.'), 404);
     } catch {
-      return reply(message('Catálogo em atualização', 'Não foi possível confirmar o catálogo agora. Tente novamente em instantes.'), 503, { 'Retry-After': '60', 'X-Robots-Tag': 'noindex, nofollow' });
+      return reply(page('Catálogo em atualização', 'Não foi possível confirmar o catálogo agora. Tente novamente em instantes.'), 503, { 'Retry-After': '60', 'X-Robots-Tag': 'noindex, nofollow' });
     }
   };
+  // Static-server fallback for unknown page routes (assets keep an empty 404).
+  handler.notFound = method => new Response(method === 'HEAD' ? null : page('Página não encontrada', 'O endereço pode ter mudado ou estar incompleto. Procure a ferramenta no catálogo ou receba as ofertas no grupo.'), { status: 404, headers: { ...RESPONSE_HEADERS, 'X-Robots-Tag': 'noindex, nofollow' } });
+  return handler;
 }
 
 let configuredHandler;
