@@ -4,7 +4,7 @@
   if (location.hostname !== 'sorefrigeracao.com' || location.protocol !== 'https:' ||
       navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
   const events = new Set(['affiliate_click', 'product_view_click', 'whatsapp_click']);
-  const placements = new Set(['home_card','home_carousel','home_hero','home_footer','home_floating','home_direct','product_offer','product_whatsapp','collection_card','related_card']);
+  const placements = new Set(['home_card','home_carousel','home_hero','home_footer','home_floating','home_direct','home_steps','product_offer','product_whatsapp','product_floating','collection_whatsapp','collection_floating','collection_card','related_card']);
   const pages = new Set(['home','product','category','catalogue']);
   let previous = '', previousAt = 0, minute = 0, count = 0, pageCounted = false, filterTimer;
   const filtersCounted = new Set();

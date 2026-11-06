@@ -140,3 +140,17 @@ test('relay is disabled in previews, without credentials and on upstream failure
   assert.equal(requests, 1);
 });
 
+
+test('accepts the new group CTAs with coherent product ids', () => {
+  const ok = [
+    { event_type: 'whatsapp_click', product_id: 0, placement: 'home_steps', page_type: 'home' },
+    { event_type: 'whatsapp_click', product_id: 0, placement: 'collection_whatsapp', page_type: 'category' },
+    { event_type: 'whatsapp_click', product_id: 0, placement: 'collection_floating', page_type: 'catalogue' },
+    { event_type: 'whatsapp_click', product_id: 42, placement: 'product_floating', page_type: 'product' },
+  ];
+  for (const e of ok) assert.deepEqual(validateClick(e), e);
+  assert.equal(validateClick({ ...ok[1], product_id: 42 }), null);
+  assert.equal(validateClick({ ...ok[3], product_id: 0 }), null);
+  assert.equal(validateClick({ ...ok[1], page_type: 'product' }), null);
+  assert.equal(validateClick({ ...ok[0], event_type: 'affiliate_click' }), null);
+});

@@ -9,8 +9,12 @@ const RULES = Object.freeze({
   home_footer: ['home', 'whatsapp_click'],
   home_floating: ['home', 'whatsapp_click'],
   home_direct: ['home', 'whatsapp_click'],
+  home_steps: ['home', 'whatsapp_click'],
   product_offer: ['product', 'affiliate_click'],
   product_whatsapp: ['product', 'whatsapp_click'],
+  product_floating: ['product', 'whatsapp_click'],
+  collection_whatsapp: [['catalogue', 'category'], 'whatsapp_click'],
+  collection_floating: [['catalogue', 'category'], 'whatsapp_click'],
   collection_card: [['catalogue', 'category'], 'product_view_click'],
   related_card: ['product', 'product_view_click'],
   page_load: [['home', 'product', 'category', 'catalogue'], 'page_view'],
@@ -28,7 +32,7 @@ export function validateClick(input) {
   if (!Number.isSafeInteger(product_id) || product_id < 0 || product_id > 2_147_483_647) return null;
   const noProduct = event_type === 'page_view'
     ? page_type !== 'product'
-    : event_type === 'filter_use' || (placement.startsWith('home_') && event_type === 'whatsapp_click');
+    : event_type === 'filter_use' || (event_type === 'whatsapp_click' && page_type !== 'product');
   if (noProduct ? product_id !== 0 : product_id === 0) return null;
   return { event_type, product_id, placement, page_type };
 }

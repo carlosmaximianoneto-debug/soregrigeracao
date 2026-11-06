@@ -78,3 +78,10 @@ test('unavailable collector does not throw or cancel navigation',async()=>{
   const b=browser({reject:true});assert.doesNotThrow(()=>b.click());await Promise.resolve();assert.equal(b.calls.length,1);
 });
 
+
+test('sends the new group CTA placements from the home and SEO pages',()=>{
+  const b=browser();
+  const cases=[['home_steps','home','0'],['collection_whatsapp','category','0'],['collection_floating','catalogue','0'],['product_floating','product','2441']];
+  for(const [placement,pageType,productId] of cases) b.click({trackEvent:'whatsapp_click',placement,pageType,productId});
+  assert.deepEqual(b.calls.map(c=>JSON.parse(c.options.body).placement),cases.map(c=>c[0]));
+});
