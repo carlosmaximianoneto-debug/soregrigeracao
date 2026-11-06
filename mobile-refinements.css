@@ -167,3 +167,6 @@ body:has(.hero){background:var(--paper)}
 .how-cta .button{width:100%;justify-content:center;min-height:56px}
 .how-cta .join-note{font-size:12px;color:#536a72;margin-top:10px;text-align:center}
 @media(max-width:700px){.how-cta{margin-top:24px}.home-categories a{font-size:14px}}
+/* Rótulo do botão do card: completo no desktop, uma linha no celular. */
+.product-link .cta-short{display:none}
+@media(max-width:700px){.product-link .cta-long{display:none}.product-link .cta-short{display:inline}}

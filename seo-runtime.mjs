@@ -80,7 +80,9 @@ const products = source.products.map((row, index) => {
   const route = `/produtos/${slug(title).slice(0, 110).replace(/-$/, '') || 'produto'}-${id}/`;
   const roundedPrice = typeof row.price === 'number' && Number.isFinite(row.price) && row.price > 0 ? Number(decimalPrice.format(row.price)) : null;
   const price = roundedPrice > 0 ? roundedPrice : null;
-  return { id, title, url, image, category, route, price };
+  // Mesma regra dos cards da home: só desconto inteiro registrado e com preço válido.
+  const discount = price && Number.isInteger(row.discount) && row.discount > 0 && row.discount < 100 ? row.discount : null;
+  return { id, title, url, image, category, route, price, discount };
 });
 const collator = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
 products.sort((a, b) => collator.compare(a.title, b.title) || collator.compare(a.id, b.id));
@@ -124,7 +126,7 @@ function document({ route, title, description, crumbs, content, entity, image = 
 }
 const baseCrumbs = [{ name: 'Início', route: '/' }, { name: 'Catálogo', route: catalogueRoute }];
 function card(product, index = 0, placement = 'collection_card', pageType = 'catalogue') {
-  return `<article class="product-card"><a class="product-image" href="${escapeHTML(product.route)}" data-track-event="product_view_click" data-product-id="${escapeHTML(product.id)}" data-placement="${placement}" data-page-type="${pageType}"><img ${imageAttributes(product.image)} alt="${escapeHTML(product.title)}" width="500" height="500" loading="${placement !== 'related_card' && index < 4 ? 'eager' : 'lazy'}" decoding="async"></a><div class="product-copy"><p class="eyebrow">${escapeHTML(product.category)}</p><h3><a href="${escapeHTML(product.route)}" data-track-event="product_view_click" data-product-id="${escapeHTML(product.id)}" data-placement="${placement}" data-page-type="${pageType}">${escapeHTML(product.title)}</a></h3><a class="detail-link" href="${escapeHTML(product.route)}" data-track-event="product_view_click" data-product-id="${escapeHTML(product.id)}" data-placement="${placement}" data-page-type="${pageType}">Ver detalhes <span aria-hidden="true">→</span></a></div></article>`;
+  return `<article class="product-card"><a class="product-image" href="${escapeHTML(product.route)}" data-track-event="product_view_click" data-product-id="${escapeHTML(product.id)}" data-placement="${placement}" data-page-type="${pageType}"><img ${imageAttributes(product.image)} alt="${escapeHTML(product.title)}" width="500" height="500" loading="${placement !== 'related_card' && index < 4 ? 'eager' : 'lazy'}" decoding="async"></a><div class="product-copy"><p class="eyebrow">${escapeHTML(product.category)}</p><h3><a href="${escapeHTML(product.route)}" data-track-event="product_view_click" data-product-id="${escapeHTML(product.id)}" data-placement="${placement}" data-page-type="${pageType}">${escapeHTML(product.title)}</a></h3><p class="card-price">${product.price ? `<strong>${money(product.price)}</strong>${product.discount ? `<span class="card-off">${product.discount}% OFF</span>` : ''}` : '<span class="card-consult">Preço no anúncio</span>'}</p><a class="detail-link detail-button" href="${escapeHTML(product.route)}" data-track-event="product_view_click" data-product-id="${escapeHTML(product.id)}" data-placement="${placement}" data-page-type="${pageType}">Ver detalhes <span aria-hidden="true">→</span></a></div></article>`;
 }
 const pageRoute = (route, number) => number === 1 ? route : `${route}pagina/${number}/`;
 function pagination(route, page, count) {

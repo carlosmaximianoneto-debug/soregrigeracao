@@ -546,3 +546,9 @@ test('fresh complete cache and early first-page preload do not cause duplicate o
   assert.equal(JSON.parse(storage.getItem(cacheKey)).receivedAt,epoch);
   await ui.releaseNetwork();assert.deepEqual(ui.ids(),['live']);
 });
+
+test('home card CTA keeps the full label on desktop and a one-line label for phones', async () => {
+  const ui = await setup([item('sale', 'Alicate', undefined, {price:160, discount:20})]);
+  const html = ui.nodes['#products'].innerHTML;
+  assert.match(html, /<a class="product-link"[^>]*><span class="cta-long">Ver no Mercado Livre<\/span><span class="cta-short">Ver oferta<\/span>/);
+});
