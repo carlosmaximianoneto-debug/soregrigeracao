@@ -44,21 +44,27 @@
 .mobile-join .button:focus-visible{outline:3px solid #c86821;outline-offset:5px}
 
 @media(max-width:700px){
+  /* No celular vira uma barra com texto: o círculo só com ícone não dizia o que fazia. */
   .mobile-join{
-    right:max(18px,env(safe-area-inset-right));
-    bottom:max(18px,env(safe-area-inset-bottom));
-    max-width:calc(100vw - 36px);
+    left:0;
+    right:0;
+    bottom:0;
+    max-width:none;
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-radius:0;
+    background:#10232df2;
+    box-shadow:0 -6px 18px #10232d33;
   }
   .mobile-join .button{
-    width:58px;
-    height:58px;
-    min-height:58px;
-    padding:0;
-    gap:0;
-    border-radius:50%;
-    /* Keep the existing invitation text as the accessible link name. */
-    font-size:0;
+    width:100%;
+    min-height:52px;
+    padding:0 18px;
+    gap:10px;
+    border-radius:8px;
+    border:0;
+    box-shadow:none;
+    font-size:15px;
   }
-  .mobile-join .button>svg:first-child{width:27px;height:27px}
+  .mobile-join .button>svg:first-child{width:22px;height:22px}
 }
 @media(prefers-reduced-motion:reduce){.mobile-join{transition:none}}

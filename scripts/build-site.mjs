@@ -23,10 +23,22 @@ export function invitationContract(html) {
   return invites[0];
 }
 
+// FAQPage descreve exatamente as perguntas visíveis na seção .questions da home.
+export function faqSchema(source) {
+  const section = source.match(/<section class="questions[\s\S]*?<\/section>/);
+  if (!section) return null;
+  const plain = html => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+  const mainEntity = [...section[0].matchAll(/<details><summary>([\s\S]*?)<span aria-hidden="true">\+<\/span><\/summary><p>([\s\S]*?)<\/p><\/details>/g)]
+    .map(([, question, answer]) => ({ '@type': 'Question', name: plain(question), acceptedAnswer: { '@type': 'Answer', text: plain(answer) } }));
+  return mainEntity.length ? { '@type': 'FAQPage', '@id': `${SITE_URL}/#faq`, inLanguage: 'pt-BR', mainEntity } : null;
+}
+
 export function productionHTML(source) {
+  const faq = faqSchema(source);
   const structuredData = { '@context': 'https://schema.org', '@graph': [
     { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: 'Só Refrigeração', url: `${SITE_URL}/`, inLanguage: 'pt-BR', publisher: { '@id': `${SITE_URL}/#organization` } },
     publisherSchema(SITE_URL),
+    ...(faq ? [faq] : []),
   ] };
   let html = source
     .replace(/<meta\s+name="robots"\s+content="[^"]*"\s*\/?>/i, '<meta name="robots" content="index,follow,max-image-preview:large">')
@@ -34,7 +46,7 @@ export function productionHTML(source) {
     .replace(/<link\s+rel="canonical"[^>]*>/gi, '')
     .replace(/<script>if\(new URLSearchParams\(location\.search\)[\s\S]*?<\/script>/, '')
     .replace('<section class="hero-visual pump-carousel"','<section hidden class="hero-visual pump-carousel"');
-  const metadata = `<link rel="canonical" href="${SITE_URL}/"><meta property="og:site_name" content="Só Refrigeração"><meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Só Refrigeração — ferramentas para refrigerista"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:url" content="${SITE_URL}/"><meta property="og:title" content="Ferramentas para Refrigerista | Só Refrigeração"><meta property="og:description" content="Ferramentas para refrigerista: bombas de vácuo, manifolds e serras-copo. Consulte o catálogo e receba ofertas no WhatsApp."><script type="application/ld+json">${JSON.stringify(structuredData)}</script>`;
+  const metadata = `<link rel="canonical" href="${SITE_URL}/"><meta property="og:site_name" content="Só Refrigeração"><meta property="og:type" content="website"><meta property="og:locale" content="pt_BR"><meta property="og:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Só Refrigeração — ferramentas para refrigerista"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${SITE_URL}/assets/compartilhamento.png"><meta property="og:url" content="${SITE_URL}/"><meta property="og:title" content="Ferramentas para Refrigerista | Só Refrigeração"><meta property="og:description" content="Ferramentas para refrigerista: bombas de vácuo, manifolds e serras-copo. Consulte o catálogo e receba ofertas no WhatsApp."><script type="application/ld+json">${JSON.stringify(structuredData).replace(/</g, '\\u003c')}</script>`;
   html = html.replace('</head>', `${metadata}</head>`);
   if (!html.includes('content="index,follow,max-image-preview:large"') || /noindex|Prévia de entrada/.test(html)) throw new Error('Metadados de prévia permaneceram no HTML de produção.');
   return html;

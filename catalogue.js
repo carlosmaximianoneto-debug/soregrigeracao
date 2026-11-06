@@ -203,7 +203,7 @@
       for (const entry of entries) entry.isIntersecting ? visible.add(entry.target) : visible.delete(entry.target);
       dock.classList.toggle('is-visible', visible.size === 0);
     });
-    document.querySelectorAll('.hero-join,.final-join').forEach(cta => observer.observe(cta));
+    document.querySelectorAll('.hero-join,.how-join,.final-join').forEach(cta => observer.observe(cta));
   } else dock.classList.add('is-visible');
   restoreCache();load();
   if (!settings.preview) {
