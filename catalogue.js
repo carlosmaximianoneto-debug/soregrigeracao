@@ -130,7 +130,7 @@
       renderedCategories=categoryKey;
     }
     const date=new Date(data.generatedAt);note.textContent=`Base consultada em ${Number.isNaN(date.getTime())?'data não informada':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Isso não indica atualização dos preços e descontos. Confira o valor e a disponibilidade no anúncio.`;
-    document.querySelector('.results-meta>span').textContent='Produtos ativos no Supabase';filter(false);
+    document.querySelector('.results-meta>span').textContent='Catálogo completo';filter(false);
     // Carousel and browser cache must never mistake the first page for the full catalogue.
     if(!firstPage)publishCatalogue(products);
   }

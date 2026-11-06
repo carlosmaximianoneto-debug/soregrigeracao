@@ -167,9 +167,12 @@ body:has(.hero){background:var(--paper)}
 .how-cta .button{width:100%;justify-content:center;min-height:56px}
 .how-cta .join-note{font-size:12px;color:#536a72;margin-top:10px;text-align:center}
 @media(max-width:700px){.how-cta{margin-top:24px}.home-categories a{font-size:14px}}
-/* Rótulo do botão do card: completo no desktop, uma linha no celular. */
-.product-link .cta-short{display:none}
-@media(max-width:700px){.product-link .cta-long{display:none}.product-link .cta-short{display:inline}}
+/* Reserva a altura final do topo enquanto o carrossel carrega (CLS no desktop era 0,12). */
+@media(min-width:901px){.hero.catalogue-hero{min-height:448px}}
+/* O texto longo so aparece quando o card tem largura para ele (evita vazar entre 701-820px e 1024-1100px). */
+.products>.product{container-type:inline-size}
+.product-link .cta-long{display:none}
+@container (min-width:250px){.product-link .cta-long{display:inline}.product-link .cta-short{display:none}}
 /* Reserva a altura da primeira página de produtos enquanto ela carrega, para o que
    vem abaixo (categorias, passo a passo) não pular. Valores abaixo do medido. */
 .products[aria-busy="true"]:empty{min-height:2600px}

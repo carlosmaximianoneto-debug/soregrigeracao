@@ -60,8 +60,8 @@
 .collection-join{margin-top:34px;padding:24px;border:1px solid var(--line);border-radius:10px;background:#fff}
 .collection-join .group-join-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:24px;font-weight:700;line-height:1.15;color:var(--navy)}
 @media(min-width:861px){.collection-join{display:grid;grid-template-columns:1fr minmax(260px,340px);align-items:center;column-gap:28px}.collection-join .group-join-button{margin-top:0;grid-row:span 2}.collection-join .group-join-note{text-align:left;margin-top:6px}}
-.seo-join-bar{display:none}
-@media(max-width:700px){
+/* Bolinha do grupo em todas as larguras (no desktop do catalogo nao havia CTA do grupo ate o rodape). */
+@media all{
   .seo-join-bar{display:block;position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));z-index:30}
   .seo-join-bar a{display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:50%;border:1px solid #10232d;background:#5ee093;color:#10232d;box-shadow:0 5px 18px #10232d3d;font-size:0;text-decoration:none}
   .seo-join-bar a:active{background:#49ca84}
@@ -79,4 +79,14 @@
 .detail-link.detail-button:hover{background:#10232d;color:#fff;text-decoration:none}
 .detail-link.detail-button:focus-visible{outline:3px solid #c86821;outline-offset:2px}
 .detail-link.detail-button>span{font-size:16px}
-@media(max-width:640px){.card-price strong{font-size:16px}.detail-link.detail-button{font-size:13px;padding-top:0}}
+@media(max-width:640px){.card-price strong{font-size:16px}.detail-link.detail-button{font-size:13px;padding-top:0}}/* Acabamento (06/11/2026) */
+.site-footer{padding-bottom:104px}
+.price-reference>.card-off{display:inline-block;margin-top:10px;font-size:13px}
+.pagination a[rel="next"]{margin-left:auto}
+.breadcrumbs a,.category-back,.product-facts dd a,.footer-inner a{position:relative}
+.breadcrumbs a::after,.category-back::after,.product-facts dd a::after,.footer-inner a::after{content:"";position:absolute;inset:-6px -4px}
+.not-found{padding-block:8px 64px}
+.not-found .collection-heading{display:block;max-width:720px;padding-top:40px;padding-bottom:32px}
+.not-found .group-join{max-width:720px}
+.not-found .not-found-button{display:inline-flex;max-width:420px;margin-top:26px}
+@media(max-width:640px){.breadcrumbs li:last-child:before{margin-right:8px}.card-price{min-height:48px;align-content:flex-start}.not-found .collection-heading{padding-top:24px}}

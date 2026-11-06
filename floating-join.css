@@ -43,7 +43,8 @@
 .mobile-join .button:hover{background:#80edac;transform:none}
 .mobile-join .button:focus-visible{outline:3px solid #c86821;outline-offset:5px}
 
-@media(max-width:700px){
+/* Bolinha em todas as larguras: a pilula com texto cobria o botao do ultimo card. */
+@media all{
   .mobile-join{
     right:max(18px,env(safe-area-inset-right));
     bottom:max(18px,env(safe-area-inset-bottom));
