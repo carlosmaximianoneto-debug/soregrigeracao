@@ -50,7 +50,7 @@ const RESPONSE_HEADERS = {
 };
 // Error pages keep the site's header, a way back to the catalogue and the group.
 // No click script here: visits to broken links must not count as catalogue views.
-const message = (title, description, invitationURL = '/?direto=1') => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#10232d"><title>${title} | Só Refrigeração</title><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">${fontHead()}<link rel="stylesheet" href="/seo-pages.css"></head><body><header class="site-header"><div class="wrap header-inner"><a class="brand" href="/" aria-label="Só Refrigeração, início">${snowflake}<span>SÓ REFRIGERAÇÃO<small>FERRAMENTAS PARA QUEM É DA ÁREA</small></span></a><nav aria-label="Principal"><a href="/catalogo/">Catálogo</a><a href="/#catalogo">Buscar ferramenta</a></nav></div></header><main id="conteudo" class="wrap not-found"><section class="collection-heading"><p class="eyebrow">ERRO 404</p><h1>${title}</h1><p class="lead">${description}</p><a class="primary-button not-found-button" href="/catalogo/"><span>Ver o catálogo de ferramentas</span><span aria-hidden="true">→</span></a></section><section class="group-join" aria-label="Ofertas no WhatsApp"><p class="group-join-title">Receba as ofertas de ferramentas no WhatsApp</p><a class="group-join-button" href="${invitationURL}" target="_blank" rel="noopener noreferrer">${whatsappIcon}<span>Entrar no grupo grátis</span><span class="sr-only"> (abre em nova aba)</span></a><p class="group-join-note">Sem custo para entrar. Saia quando quiser.</p></section></main></body></html>`;
+const message = (title, description, invitationURL = '/?direto=1', eyebrow = 'ERRO 404') => `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#10232d"><title>${title} | Só Refrigeração</title><link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">${fontHead()}<link rel="stylesheet" href="/seo-pages.css"></head><body><header class="site-header"><div class="wrap header-inner"><a class="brand" href="/" aria-label="Só Refrigeração, início">${snowflake}<span>SÓ REFRIGERAÇÃO<small>FERRAMENTAS PARA QUEM É DA ÁREA</small></span></a><nav aria-label="Principal"><a href="/catalogo/">Catálogo</a><a href="/#catalogo">Buscar ferramenta</a></nav></div></header><main id="conteudo" class="wrap not-found"><section class="collection-heading"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1><p class="lead">${description}</p><a class="primary-button not-found-button" href="/catalogo/"><span>Ver o catálogo de ferramentas</span><span aria-hidden="true">→</span></a></section><section class="group-join" aria-label="Ofertas no WhatsApp"><p class="group-join-title">Receba as ofertas de ferramentas no WhatsApp</p><a class="group-join-button" href="${invitationURL}" target="_blank" rel="noopener noreferrer">${whatsappIcon}<span>Entrar no grupo grátis</span><span class="sr-only"> (abre em nova aba)</span></a><p class="group-join-note">Sem custo para entrar. Saia quando quiser.</p></section></main></body></html>`;
 
 export function createSeoHandler({ snapshotURL, categorySource, base = '', production = false, invitationURL, fetchImpl = fetch, now = Date.now } = {}) {
   const options = validateSeoOptions({ production, base, invitationURL });
@@ -84,7 +84,7 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
     try { return await pending; } finally { pending = null; }
   }
 
-  const page = (title, description) => message(title, description, options.invitationURL);
+  const page = (title, description, eyebrow) => message(title, description, options.invitationURL, eyebrow);
   const handler = async function handler(request) {
     const requestURL = new URL(request.url);
     const route = requestURL.pathname;
@@ -138,7 +138,7 @@ export function createSeoHandler({ snapshotURL, categorySource, base = '', produ
       if (renamed) return reply('', 301, { Location: renamed });
       return reply(page('Produto ou página não encontrado', 'Este item não está no catálogo atual. Explore as categorias para encontrar outras opções.'), 404);
     } catch {
-      return reply(page('Catálogo em atualização', 'Não foi possível confirmar o catálogo agora. Tente novamente em instantes.'), 503, { 'Retry-After': '60', 'X-Robots-Tag': 'noindex, nofollow' });
+      return reply(page('Catálogo em atualização', 'Não foi possível confirmar o catálogo agora. Tente novamente em instantes.', 'SÓ REFRIGERAÇÃO'), 503, { 'Retry-After': '60', 'X-Robots-Tag': 'noindex, nofollow' });
     }
   };
   // Static-server fallback for unknown page routes (assets keep an empty 404).
@@ -157,7 +157,7 @@ export default async function handler(request) {
     });
     return await configuredHandler(request);
   } catch {
-    return new Response(message('Catálogo em preparação', 'A configuração do catálogo está sendo concluída.'), { status: 503, headers: { ...RESPONSE_HEADERS, 'X-Robots-Tag': 'noindex, nofollow', 'Retry-After': '60' } });
+    return new Response(message('Catálogo em preparação', 'A configuração do catálogo está sendo concluída.', undefined, 'SÓ REFRIGERAÇÃO'), { status: 503, headers: { ...RESPONSE_HEADERS, 'X-Robots-Tag': 'noindex, nofollow', 'Retry-After': '60' } });
   }
 }
 

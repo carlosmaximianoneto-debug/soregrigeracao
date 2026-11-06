@@ -81,7 +81,7 @@
 .detail-link.detail-button>span{font-size:16px}
 @media(max-width:640px){.card-price strong{font-size:16px}.detail-link.detail-button{font-size:13px;padding-top:0}}/* Acabamento (06/11/2026) */
 .site-footer{padding-bottom:104px}
-.price-reference>.card-off{display:inline-block;margin-top:10px;font-size:13px}
+.price-reference>.card-off{display:inline-block;margin-top:10px;font-size:13px;color:#176536;line-height:1.4}
 .pagination a[rel="next"]{margin-left:auto}
 .breadcrumbs a,.category-back,.product-facts dd a,.footer-inner a{position:relative}
 .breadcrumbs a::after,.category-back::after,.product-facts dd a::after,.footer-inner a::after{content:"";position:absolute;inset:-6px -4px}
