@@ -62,13 +62,11 @@
 @media(min-width:861px){.collection-join{display:grid;grid-template-columns:1fr minmax(260px,340px);align-items:center;column-gap:28px}.collection-join .group-join-button{margin-top:0;grid-row:span 2}.collection-join .group-join-note{text-align:left;margin-top:6px}}
 .seo-join-bar{display:none}
 @media(max-width:700px){
-  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
-  .seo-join-bar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#10232df2;box-shadow:0 -6px 18px #10232d33}
-  .seo-join-bar a{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 18px;border-radius:8px;background:#5cde98;color:#10232d;font:700 15px/1.2 Inter,Arial,sans-serif;text-decoration:none}
+  .seo-join-bar{display:block;position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));z-index:30}
+  .seo-join-bar a{display:flex;align-items:center;justify-content:center;width:58px;height:58px;border-radius:50%;border:1px solid #10232d;background:#5ee093;color:#10232d;box-shadow:0 5px 18px #10232d3d;font-size:0;text-decoration:none}
   .seo-join-bar a:active{background:#49ca84}
-  .seo-join-bar svg{flex:0 0 22px;width:22px;height:22px}
-  .seo-join-bar small{font-weight:500;font-size:12px;opacity:.8}
-  .seo-join-bar a:focus-visible{outline:3px solid #ffe600;outline-offset:3px}
+  .seo-join-bar svg{width:27px;height:27px}
+  .seo-join-bar a:focus-visible{outline:3px solid #c86821;outline-offset:5px}
 }
 /* Cards com preço e botão (05/11/2026): uma linha a mais no subgrid. */
 .product-grid>.product-card{grid-row:span 5}
