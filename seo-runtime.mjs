@@ -3,6 +3,12 @@ import { publisher, publisherSchema } from './site-identity.mjs';
 
 export const PAGE_SIZE = 24;
 const BRAND = 'Só Refrigeração';
+// Cadastros às vezes chegam com pontuação solta (". Medidor ... Mícrons.").
+// A rota continua derivada do mesmo slug; só o texto exibido fica limpo.
+export const cleanTitle = value => String(value ?? '').replace(/\s+/g, ' ').trim()
+  .replace(/^[.,;:!\-–—·\s]+/, '').replace(/[.,;:\-–—·\s]+$/, '').trim();
+const fitText = (text, max) => text.length <= max ? text
+  : text.slice(0, text.lastIndexOf(' ', max - 1)).replace(/[,;:\-–—\s]+$/, '') + '…';
 export function validateSeoOptions({ production = false, base = '', invitationURL = '/?direto=1' } = {}) {
   if (production !== Boolean(base)) throw new Error('Produção exige flag explícita e base HTTPS juntas.');
   if (base) {
@@ -64,7 +70,7 @@ if (typeof categoryContext.window.catalogueCategory !== 'function') throw new Er
 const seen = new Set();
 const products = source.products.map((row, index) => {
   const id = String(row.id ?? '').trim();
-  const title = String(row.title ?? '').trim();
+  const title = cleanTitle(row.title);
   const url = safeURL(row.url);
   const image = safeURL(row.image, { local: true, image: true });
   if (!/^[a-zA-Z0-9_-]+$/.test(id) || !title || !url || !image) throw new Error(`Produto inválido na posição ${index}: id, título, URL HTTPS e imagem são obrigatórios.`);
@@ -145,7 +151,8 @@ function collection(name, route, list, isCategory = false, page = 1) {
 function renderProduct(product) {
   const category = categories.find(c => c.name === product.category);
   const related = category.products.filter(p => p.id !== product.id).slice(0, 4);
-  const description = `${product.title}. Veja a referência do catálogo ${BRAND}, confira o anúncio e compare outros produtos em ${product.category.toLowerCase()}.`;
+  const description = fitText(`${product.title}${product.price ? ` por ${money(product.price)}` : ''}. Compare com outros modelos de ${product.category.toLowerCase()} e receba ofertas no grupo do WhatsApp.`, 160);
+  const pageTitle = product.title.length + BRAND.length + 3 <= 65 ? `${product.title} | ${BRAND}` : product.title;
   const price = product.price ? `<div class="price-reference"><span>Preço cadastrado</span><strong>${money(product.price)}</strong><p>O preço pode ter mudado. Confirme o valor e as condições no anúncio.</p></div>` : '<p class="offer-note">Consulte preço e condições no anúncio.</p>';
   const content = `<article><div class="product-detail"><div class="detail-photo"><img ${imageAttributes(product.image, true)} alt="${escapeHTML(product.title)}" width="800" height="800" loading="eager" decoding="async" fetchpriority="high"></div><div class="detail-copy"><a class="eyebrow category-back" href="${category.route}">${escapeHTML(product.category)}</a><h1>${escapeHTML(product.title)}</h1>${price}<a class="primary-button" href="${escapeHTML(product.url)}" data-track-event="affiliate_click" data-product-id="${escapeHTML(product.id)}" data-placement="product_offer" data-page-type="product" target="_blank" rel="sponsored noopener noreferrer"><span>Ver oferta no Mercado Livre</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg><span class="sr-only"> (abre em nova aba)</span></a><p class="destination-note">Confira a versão selecionada, o vendedor, o frete e a disponibilidade antes de comprar. Link de afiliado: podemos receber comissão pela compra.</p>${groupJoin(product.id)}<dl class="product-facts"><div><dt>Categoria</dt><dd><a href="${category.route}">${escapeHTML(product.category)}</a></dd></div><div><dt>Referência no catálogo</dt><dd>${escapeHTML(product.id)}</dd></div></dl></div></div><section class="buying-guide" aria-labelledby="conferir"><p class="eyebrow">ANTES DE ESCOLHER</p><h2 id="conferir">Confira se atende ao seu serviço</h2><p>${escapeHTML(categoryAdvice(product.category))}</p><a class="text-link" href="${category.route}">Comparar ${escapeHTML(product.category.toLowerCase())} <span aria-hidden="true">→</span></a></section></article>${related.length ? `<section class="related" aria-labelledby="relacionados"><div class="section-title"><div><p class="eyebrow">NA MESMA CATEGORIA</p><h2 id="relacionados">Outros modelos para comparar</h2></div><a class="text-link" href="${category.route}">Ver categoria →</a></div><div class="product-grid">${related.map((product,index) => card(product,index,'related_card','product')).join('')}</div></section>` : ''}`;
   // Only describe an offer when its positive BRL amount is also visible above.
@@ -154,7 +161,7 @@ function renderProduct(product) {
     ? { '@type': 'Product', name: product.title, image: absolute(product.image), category: product.category, url: absolute(product.route),
         offers: { '@type': 'Offer', priceCurrency: 'BRL', price: decimalPrice.format(product.price), url: product.url } }
     : { '@type': 'WebPage', name: product.title, description, image: absolute(product.image), url: absolute(product.route), inLanguage: 'pt-BR' };
-  return document({ route: product.route, pageType: 'product', productId: product.id, title: `${product.title} | ${BRAND}`, description, image: product.image.startsWith('https:') ? product.image : (options.base ? product.image : ''), crumbs: [...baseCrumbs, { name: product.category, route: category.route }, { name: product.title, route: product.route }], content, entity });
+  return document({ route: product.route, pageType: 'product', productId: product.id, title: pageTitle, description, image: product.image.startsWith('https:') ? product.image : (options.base ? product.image : ''), crumbs: [...baseCrumbs, { name: product.category, route: category.route }, { name: product.title, route: product.route }], content, entity });
 }
 
 const routeMap = new Map();
