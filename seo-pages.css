@@ -55,3 +55,18 @@
 @media(max-width:360px){.collection-heading h1{font-size:32px}.catalogue-layout .product-copy{padding:12px}.catalogue-layout .product-grid{gap:12px}}
 
 .desktop-category-list{display:none}.category-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;font:700 14px Inter,Arial,sans-serif;letter-spacing:0;padding:10px 0 17px}.category-heading>span{font-size:11px;font-weight:500;color:var(--muted)}@media(min-width:861px){.desktop-category-list{display:block}.category-sidebar>details{display:none}}
+
+/* Convite no fim das listagens e atalho fixo do grupo no celular (05/11/2026). */
+.collection-join{margin-top:34px;padding:24px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.collection-join .group-join-title{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-size:24px;font-weight:700;line-height:1.15;color:var(--navy)}
+@media(min-width:861px){.collection-join{display:grid;grid-template-columns:1fr minmax(260px,340px);align-items:center;column-gap:28px}.collection-join .group-join-button{margin-top:0;grid-row:span 2}.collection-join .group-join-note{text-align:left;margin-top:6px}}
+.seo-join-bar{display:none}
+@media(max-width:700px){
+  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  .seo-join-bar{display:block;position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#10232df2;box-shadow:0 -6px 18px #10232d33}
+  .seo-join-bar a{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:0 18px;border-radius:8px;background:#5cde98;color:#10232d;font:700 15px/1.2 Inter,Arial,sans-serif;text-decoration:none}
+  .seo-join-bar a:active{background:#49ca84}
+  .seo-join-bar svg{flex:0 0 22px;width:22px;height:22px}
+  .seo-join-bar small{font-weight:500;font-size:12px;opacity:.8}
+  .seo-join-bar a:focus-visible{outline:3px solid #ffe600;outline-offset:3px}
+}
