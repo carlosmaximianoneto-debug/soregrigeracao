@@ -106,14 +106,14 @@ ${fontHead()}<style>${GROUPS_CSS}</style></head>
 <main class="g">
 <header class="top">${LOGO}<span>SÓ REFRIGERAÇÃO</span></header>
 <p class="tag"><span class="dot"></span>GRUPO GRÁTIS NO WHATSAPP</p>
-<h1>Ferramenta de refri <span>com preço baixo</span> todo dia.</h1>
-<p class="lead">A gente garimpa as ofertas no Mercado Livre e manda direto no seu WhatsApp. Você só escolhe.</p>
+<h1>Ofertas para<br><span>refrigerista</span><br>todo dia.</h1>
+<p class="lead">A gente garimpa ferramentas de refrigeração com preço baixo no Mercado Livre e manda direto no seu WhatsApp. Você só escolhe.</p>
 <ul class="tools" aria-label="Exemplos de ferramentas que aparecem no grupo">
 ${GROUP_TOOLS.map(([id, name], i) => `<li><img src="${toolImage(id, 240)}" alt="${name}" width="112" height="96" ${i < 3 ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async"><span>${name}</span></li>`).join('')}
 </ul>
 <ul class="why">
-<li>${CHECK}<span><b>Só ferramenta de refri e ar-condicionado.</b> Nada de oferta aleatória.</span></li>
-<li>${CHECK}<span><b>Cupons e descontos</b> conferidos antes de ir pro grupo.</span></li>
+<li>${CHECK}<span><b>Só ferramentas de refrigeração e ar-condicionado.</b> Nada de oferta aleatória.</span></li>
+<li>${CHECK}<span><b>Cupons e descontos</b> conferidos antes de chegar ao grupo.</span></li>
 <li>${CHECK}<span><b>Grátis.</b> Silencie ou saia quando quiser.</span></li>
 </ul>
 <p class="proof"><strong>+6 mil</strong><span>técnicos e instaladores já recebem as ofertas nos nossos grupos.</span></p>
