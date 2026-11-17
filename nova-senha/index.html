@@ -69,6 +69,11 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
     <p>Volte ao app Só Refrigeração e entre com seu e-mail e a senha nova.</p>
   </section>
 
+  <section class="card" id="other-card" hidden>
+    <h1>Esta conta não é do app</h1>
+    <p>Este e-mail não tem conta no app Só Refrigeração, então a senha não foi alterada aqui. Para trocar a senha de outro serviço, use a opção de recuperar senha dele.</p>
+  </section>
+
   <section class="card" id="invalid-card" hidden>
     <h1>Este link não vale mais</h1>
     <p id="invalid-text">O link para trocar a senha está incompleto ou já foi usado. No app, toque em <strong>Esqueci minha senha</strong> e peça um novo.</p>
@@ -88,7 +93,7 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
   history.replaceState(null, '', location.pathname);
   let accessToken = null;
 
-  const show = id => { for (const card of ['form-card', 'done-card', 'invalid-card']) $(card).hidden = card !== id; };
+  const show = id => { for (const card of ['form-card', 'done-card', 'invalid-card', 'other-card']) $(card).hidden = card !== id; };
   const fail = text => { const box = $('error'); box.textContent = text; box.hidden = false; };
   if (!/^[A-Za-z0-9_-]{20,200}$/.test(tokenHash) || query.get('type') !== 'recovery') { show('invalid-card'); return; }
 
@@ -137,6 +142,12 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
         if (!response.ok || !data.access_token) {
           if (response.status === 429) return fail('Muitas tentativas. Espere alguns minutos e tente de novo.');
           return expired();
+        }
+        // O cadastro do Supabase é dividido com o painel ACBOT: só conta criada pelo app troca a senha aqui.
+        if (data.user?.app_metadata?.application !== 'so_refrigeracao') {
+          call('/logout?scope=local', 'POST', {}, data.access_token).catch(() => {});
+          $('password').value = ''; $('confirm').value = '';
+          return show('other-card');
         }
         accessToken = data.access_token;
         if (useFactors(data.user) && !/^[0-9]{6}$/.test($('mfa-code').value.trim())) {
