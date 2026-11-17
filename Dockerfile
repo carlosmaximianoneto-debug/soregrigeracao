@@ -7,6 +7,7 @@ COPY index.html site-clicks.js styles.css mobile-refinements.css carousel.css fl
 COPY blog-clicks.js blog.css ./
 COPY catalogue.js categories.js catalogue-images.js carousel.js site-identity.mjs ./
 COPY privacidade/index.html ./privacidade/index.html
+COPY nova-senha/index.html ./nova-senha/index.html
 COPY assets/produto_149.jpg assets/produto_263.jpg assets/produto_1980.jpg assets/produto_2164.jpg ./assets/
 COPY assets/favicon.svg assets/favicon.ico assets/apple-touch-icon.png assets/icon-192.png assets/icon-512.png assets/compartilhamento.png ./assets/
 COPY assets/blog/ ./assets/blog/

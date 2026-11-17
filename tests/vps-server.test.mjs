@@ -50,6 +50,8 @@ async function fixture(t, options = {}) {
   await fs.writeFile(path.join(distDir, 'styles.css'), 'body{color:#10232d}');
   await fs.writeFile(path.join(distDir, 'site-config.js'), 'window.REFRI_CATALOGUE={preview:false};');
   await fs.writeFile(path.join(distDir, 'privacidade/index.html'), '<h1>Privacidade</h1>');
+  await fs.mkdir(path.join(distDir, 'nova-senha'));
+  await fs.writeFile(path.join(distDir, 'nova-senha/index.html'), '<h1>Crie sua nova senha</h1>');
   await fs.writeFile(path.join(distDir, '.env'), 'NEVER_PUBLIC=private');
   await fs.writeFile(path.join(distDir, 'source.mjs'), 'never public source');
   await fs.writeFile(path.join(directory, 'secret.txt'), 'never public sibling');
@@ -101,6 +103,15 @@ integration('serves only explicit public files with MIME and security headers; H
   assert.equal(Number(css.headers['content-length']), Buffer.byteLength('body{color:#10232d}'));
   assert.equal((await request(port, '/site-config.js')).status, 200);
   assert.equal((await request(port, '/privacidade/')).status, 200);
+  const reset = await request(port, '/nova-senha/?token_hash=abcdefghijklmnopqrstuvwxyz0123&type=recovery');
+  assert.equal(reset.status, 200);
+  assert.match(reset.text, /Crie sua nova senha/);
+  assert.equal(reset.headers['referrer-policy'], 'no-referrer');
+  for (const route of ['/nova-senha', '/nova-senha/index.html']) {
+    const moved = await request(port, route);
+    assert.equal(moved.status, 301, route);
+    assert.equal(moved.headers.location, '/nova-senha/');
+  }
   for (const route of ['/source.mjs', '/.env', '/server/main.mjs', '/package.json', '/operations/clicks/handler.mjs', '/assets/', '/missing.html', '/styles.css.map']) {
     const result = await request(port, route);
     assert.equal(result.status, 404, route);

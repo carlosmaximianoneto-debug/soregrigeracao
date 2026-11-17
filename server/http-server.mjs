@@ -12,7 +12,7 @@ const MAX_STATIC_BYTES = 10 * 1024 * 1024;
 // Public artifacts only. A file being present in dist does not make it public.
 export const PUBLIC_FILES = Object.freeze([
   ...BLOG_COVER_FILES, ...FONT_FILES,
-  'index.html', 'site-config.js', 'site-clicks.js', 'blog-clicks.js', 'blog.css', 'privacidade/index.html',
+  'index.html', 'site-config.js', 'site-clicks.js', 'blog-clicks.js', 'blog.css', 'privacidade/index.html', 'nova-senha/index.html',
   'styles.css', 'mobile-refinements.css', 'carousel.css', 'floating-join.css', 'seo-pages.css',
   'catalogue.js', 'categories.js', 'catalogue-images.js', 'carousel.js',
   'assets/produto_149.jpg', 'assets/produto_263.jpg', 'assets/produto_1980.jpg', 'assets/produto_2164.jpg',
@@ -295,7 +295,13 @@ export function createVpsServer({ distDir, seoHandler, clickHandler, blogClickHa
       if (route === '/index.html' || route === '/privacidade' || route === '/privacidade/index.html') {
         return failure(301, { Location: route === '/index.html' ? '/' : '/privacidade/' });
       }
-      const name = route === '/' ? 'index.html' : route === '/privacidade/' ? 'privacidade/index.html' : route.slice(1);
+      // Página da troca de senha do app (link do e-mail do Supabase). O 301 mantém a query com o token.
+      if (route === '/nova-senha' || route === '/nova-senha/index.html') {
+        const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+        return failure(301, { Location: '/nova-senha/' + query });
+      }
+      const name = route === '/' ? 'index.html' : route === '/privacidade/' ? 'privacidade/index.html'
+        : route === '/nova-senha/' ? 'nova-senha/index.html' : route.slice(1);
       if (PUBLIC_SET.has(name)) return staticResponse(root, name, req.method, req.headers, revision);
       // Pages get the branded 404; assets, dotfiles and source files stay an empty 404.
       if (typeof seoHandler.notFound === 'function' && !isAssetRoute(route)) return seoHandler.notFound(req.method);

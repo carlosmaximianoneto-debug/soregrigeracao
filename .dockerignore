@@ -31,6 +31,9 @@ blog/**
 !privacidade/
 privacidade/**
 !privacidade/index.html
+!nova-senha/
+nova-senha/**
+!nova-senha/index.html
 !assets/
 assets/**
 !assets/produto_149.jpg

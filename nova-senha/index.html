@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova senha | Só Refrigeração</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<style>
+:root{--primary:#0369A1;--on-primary:#fff;--bg:#F2F4F6;--card:#fff;--text:#141A1E;--muted:#55626A;--line:#D3D9DD;--error:#B3261E;--error-bg:#F9DEDC;--ok:#0B6B3A;--ok-bg:#DDF3E6}
+@media(prefers-color-scheme:dark){:root{--primary:#38BDF8;--on-primary:#00202E;--bg:#0E1012;--card:#16191C;--text:#ECEFF1;--muted:#A3ADB4;--line:#2E3539;--error:#F2B8B5;--error-bg:#3A1513;--ok:#86E0A8;--ok-bg:#12301F}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;display:flex;justify-content:center;padding:32px 16px}
+main{width:100%;max-width:420px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.brand img{width:44px;height:44px;border-radius:12px}
+.brand span{font-weight:700;font-size:18px;letter-spacing:.01em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
+h1{font-size:24px;line-height:1.25;margin:0 0 8px}
+p{margin:0;line-height:1.6;color:var(--muted);font-size:15px}
+label{display:block;font-size:14px;font-weight:600;margin:20px 0 6px}
+.field{position:relative}
+input{width:100%;font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px 72px 14px 14px;min-height:52px}
+input:focus{outline:2px solid var(--primary);outline-offset:1px;border-color:var(--primary)}
+.show{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--primary);font:inherit;font-size:14px;font-weight:600;padding:10px;min-height:44px;cursor:pointer}
+.hint{font-size:13px;margin-top:6px}
+button[type=submit]{width:100%;margin-top:24px;min-height:52px;border:0;border-radius:26px;background:var(--primary);color:var(--on-primary);font:inherit;font-size:16px;font-weight:600;cursor:pointer}
+button[type=submit]:disabled{opacity:.6;cursor:default}
+.msg{margin-top:16px;padding:12px 14px;border-radius:10px;font-size:14px;line-height:1.5}
+.msg.error{background:var(--error-bg);color:var(--error)}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.done h1{margin-top:4px}
+.foot{margin-top:20px;font-size:13px;text-align:center}
+.foot a{color:var(--primary)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><img src="/assets/icon-192.png" alt="" width="44" height="44"><span>Só Refrigeração</span></div>
+
+  <section class="card" id="form-card">
+    <h1>Crie sua nova senha</h1>
+    <p>Escolha uma senha nova para entrar no app Só Refrigeração.</p>
+    <form id="form" novalidate>
+      <label for="password">Nova senha</label>
+      <div class="field">
+        <input id="password" type="password" autocomplete="new-password" minlength="8" required>
+        <button class="show" type="button" data-for="password" aria-label="Mostrar senha">Mostrar</button>
+      </div>
+      <p class="hint">Use pelo menos 8 caracteres.</p>
+      <label for="confirm">Repita a nova senha</label>
+      <div class="field">
+        <input id="confirm" type="password" autocomplete="new-password" minlength="8" required>
+        <button class="show" type="button" data-for="confirm" aria-label="Mostrar senha">Mostrar</button>
+      </div>
+      <button type="submit" id="submit">Salvar nova senha</button>
+      <div class="msg error" id="error" role="alert" hidden></div>
+    </form>
+  </section>
+
+  <section class="card done" id="done-card" hidden>
+    <div class="msg ok">Senha trocada.</div>
+    <h1>Pronto, já pode entrar</h1>
+    <p>Volte ao app Só Refrigeração e entre com seu e-mail e a senha nova.</p>
+  </section>
+
+  <section class="card" id="invalid-card" hidden>
+    <h1>Este link não vale mais</h1>
+    <p id="invalid-text">O link para trocar a senha está incompleto ou já foi usado. No app, toque em <strong>Esqueci minha senha</strong> e peça um novo.</p>
+  </section>
+
+  <p class="foot"><a href="/privacidade/">Privacidade</a></p>
+</main>
+<script>
+(() => {
+  const AUTH = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/auth/v1';
+  // Chave pública do projeto (a mesma do app); não é segredo.
+  const KEY = 'sb_publishable_zmo7enM-5LJK470KTRD4Rw_6tdtseSS';
+  const $ = id => document.getElementById(id);
+  const query = new URLSearchParams(location.search);
+  const tokenHash = query.get('token_hash') || '';
+  // Tira o código da barra de endereço (histórico, captura de tela); ele fica só na memória.
+  history.replaceState(null, '', location.pathname);
+  let accessToken = null;
+
+  const show = id => { for (const card of ['form-card', 'done-card', 'invalid-card']) $(card).hidden = card !== id; };
+  const fail = text => { const box = $('error'); box.textContent = text; box.hidden = false; };
+  if (!/^[A-Za-z0-9_-]{20,200}$/.test(tokenHash) || query.get('type') !== 'recovery') { show('invalid-card'); return; }
+
+  document.querySelectorAll('.show').forEach(button => button.addEventListener('click', () => {
+    const input = $(button.dataset.for); const visible = input.type === 'text';
+    input.type = visible ? 'password' : 'text';
+    button.textContent = visible ? 'Mostrar' : 'Ocultar';
+    button.setAttribute('aria-label', visible ? 'Mostrar senha' : 'Ocultar senha');
+  }));
+
+  async function call(path, method, body, token) {
+    const headers = { apikey: KEY, 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    const response = await fetch(AUTH + path, { method, headers, body: JSON.stringify(body), cache: 'no-store', signal: AbortSignal.timeout(20000) });
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, code: data.error_code || data.code || '', message: data.msg || data.message || '' };
+  }
+
+  $('form').addEventListener('submit', async event => {
+    event.preventDefault();
+    $('error').hidden = true;
+    const password = $('password').value;
+    if ([...password].length < 8) return fail('A senha precisa ter pelo menos 8 caracteres.');
+    if (new TextEncoder().encode(password).length > 72) return fail('A senha ficou longa demais. Use uma mais curta.');
+    if (password !== $('confirm').value) return fail('As duas senhas não são iguais.');
+    $('submit').disabled = true; $('submit').textContent = 'Salvando…';
+    try {
+      // O link só é usado aqui, ao salvar: programas que abrem links do e-mail sozinhos não o gastam.
+      if (!accessToken) {
+        const response = await fetch(AUTH + '/verify', { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'recovery', token_hash: tokenHash }), cache: 'no-store', signal: AbortSignal.timeout(20000) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.access_token) {
+          if (response.status === 429) return fail('Muitas tentativas. Espere alguns minutos e tente de novo.');
+          $('invalid-text').innerHTML = 'O link para trocar a senha expirou ou já foi usado. No app, toque em <strong>Esqueci minha senha</strong> e peça um novo.';
+          return show('invalid-card');
+        }
+        accessToken = data.access_token;
+      }
+      const result = await call('/user', 'PUT', { password }, accessToken);
+      if (!result.ok) {
+        if (result.code === 'same_password') return fail('Essa já é a sua senha atual. Escolha outra.');
+        if (result.code === 'weak_password') return fail('Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.');
+        if (result.status === 401 || result.status === 403) { accessToken = null; return show('invalid-card'); }
+        return fail('Não foi possível salvar a senha agora. Tente de novo em alguns minutos.');
+      }
+      // Encerra a sessão aberta só para a troca; o login continua sendo pelo app.
+      call('/logout?scope=local', 'POST', {}, accessToken).catch(() => {});
+      accessToken = null;
+      $('password').value = ''; $('confirm').value = '';
+      show('done-card');
+    } catch {
+      fail('Sem conexão. Confira a internet e tente de novo.');
+    } finally {
+      $('submit').disabled = false; $('submit').textContent = 'Salvar nova senha';
+    }
+  });
+})();
+</script>
+</body>
+</html>
