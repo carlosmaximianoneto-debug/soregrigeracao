@@ -53,6 +53,11 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
         <input id="confirm" type="password" autocomplete="new-password" minlength="8" required>
         <button class="show" type="button" data-for="confirm" aria-label="Mostrar senha">Mostrar</button>
       </div>
+      <div id="mfa" hidden>
+        <label for="mfa-code">Código do app autenticador</label>
+        <input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" style="padding-right:14px">
+        <p class="hint">Sua conta usa verificação em duas etapas. Digite o código de 6 dígitos do app autenticador.</p>
+      </div>
       <button type="submit" id="submit">Salvar nova senha</button>
       <div class="msg error" id="error" role="alert" hidden></div>
     </form>
@@ -99,8 +104,21 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
     if (token) headers.Authorization = 'Bearer ' + token;
     const response = await fetch(AUTH + path, { method, headers, body: JSON.stringify(body), cache: 'no-store', signal: AbortSignal.timeout(20000) });
     const data = await response.json().catch(() => ({}));
-    return { ok: response.ok, status: response.status, code: data.error_code || data.code || '', message: data.msg || data.message || '' };
+    return { ok: response.ok, status: response.status, code: data.error_code || data.code || '', message: data.msg || data.message || '', data };
   }
+
+  // Conta com verificação em duas etapas (TOTP): o Supabase só troca a senha depois do código (sessão AAL2).
+  let factorId = null;
+  const useFactors = user => {
+    const factor = (user?.factors || []).find(f => f.factor_type === 'totp' && f.status === 'verified');
+    if (factor) { factorId = factor.id; $('mfa').hidden = false; }
+    return Boolean(factor);
+  };
+  const expired = () => {
+    accessToken = null;
+    $('invalid-text').innerHTML = 'O link para trocar a senha expirou ou já foi usado. No app, toque em <strong>Esqueci minha senha</strong> e peça um novo.';
+    show('invalid-card');
+  };
 
   $('form').addEventListener('submit', async event => {
     event.preventDefault();
@@ -118,16 +136,37 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.access_token) {
           if (response.status === 429) return fail('Muitas tentativas. Espere alguns minutos e tente de novo.');
-          $('invalid-text').innerHTML = 'O link para trocar a senha expirou ou já foi usado. No app, toque em <strong>Esqueci minha senha</strong> e peça um novo.';
-          return show('invalid-card');
+          return expired();
         }
         accessToken = data.access_token;
+        if (useFactors(data.user) && !/^[0-9]{6}$/.test($('mfa-code').value.trim())) {
+          $('mfa-code').focus();
+          return fail('Falta o código de 6 dígitos do app autenticador.');
+        }
+      }
+      if (factorId) {
+        const code = $('mfa-code').value.trim();
+        if (!/^[0-9]{6}$/.test(code)) { $('mfa-code').focus(); return fail('Falta o código de 6 dígitos do app autenticador.'); }
+        const challenge = await call('/factors/' + factorId + '/challenge', 'POST', {}, accessToken);
+        if (challenge.status === 401) return expired();
+        const verified = challenge.ok && challenge.data.id ? await call('/factors/' + factorId + '/verify', 'POST', { challenge_id: challenge.data.id, code }, accessToken) : challenge;
+        if (!verified.ok || !verified.data.access_token) {
+          if (verified.status === 429) return fail('Muitas tentativas. Espere alguns minutos e tente de novo.');
+          $('mfa-code').value = ''; $('mfa-code').focus();
+          return fail('Código do autenticador errado ou vencido. Digite o código que aparece agora.');
+        }
+        accessToken = verified.data.access_token;
+        factorId = null; $('mfa').hidden = true;
       }
       const result = await call('/user', 'PUT', { password }, accessToken);
       if (!result.ok) {
         if (result.code === 'same_password') return fail('Essa já é a sua senha atual. Escolha outra.');
         if (result.code === 'weak_password') return fail('Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.');
-        if (result.status === 401 || result.status === 403) { accessToken = null; return show('invalid-card'); }
+        if (result.code === 'insufficient_aal') {
+          const me = await call('/user', 'GET', undefined, accessToken);
+          if (useFactors(me.data)) { $('mfa-code').focus(); return fail('Falta o código de 6 dígitos do app autenticador.'); }
+        }
+        if (result.status === 401 || result.status === 403) return expired();
         return fail('Não foi possível salvar a senha agora. Tente de novo em alguns minutos.');
       }
       // Encerra a sessão aberta só para a troca; o login continua sendo pelo app.
