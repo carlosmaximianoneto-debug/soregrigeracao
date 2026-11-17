@@ -28,6 +28,8 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
 .msg{margin-top:16px;padding:12px 14px;border-radius:10px;font-size:14px;line-height:1.5}
 .msg.error{background:var(--error-bg);color:var(--error)}
 .msg.ok{background:var(--ok-bg);color:var(--ok)}
+.msg.panel{background:#FFF1D6;color:#5A3A00;margin:0 0 4px;border:1px solid #F0C36D}
+@media(prefers-color-scheme:dark){.msg.panel{background:#3A2A0A;color:#FFD98A;border-color:#7A5A1A}}
 .done h1{margin-top:4px}
 .foot{margin-top:20px;font-size:13px;text-align:center}
 .foot a{color:var(--primary)}
@@ -41,13 +43,14 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
   <section class="card" id="form-card">
     <h1>Crie sua nova senha</h1>
     <p>Escolha uma senha nova para entrar no app Só Refrigeração.</p>
+    <div class="msg panel" id="panel-note" hidden>Você está trocando a senha do <strong>painel ACBOT</strong>. Ela vale para o painel e precisa de pelo menos 12 caracteres.</div>
     <form id="form" novalidate>
       <label for="password">Nova senha</label>
       <div class="field">
         <input id="password" type="password" autocomplete="new-password" minlength="8" required>
         <button class="show" type="button" data-for="password" aria-label="Mostrar senha">Mostrar</button>
       </div>
-      <p class="hint">Use pelo menos 8 caracteres.</p>
+      <p class="hint" id="length-hint">Use pelo menos 8 caracteres.</p>
       <label for="confirm">Repita a nova senha</label>
       <div class="field">
         <input id="confirm" type="password" autocomplete="new-password" minlength="8" required>
@@ -66,7 +69,7 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
   <section class="card done" id="done-card" hidden>
     <div class="msg ok">Senha trocada.</div>
     <h1>Pronto, já pode entrar</h1>
-    <p>Volte ao app Só Refrigeração e entre com seu e-mail e a senha nova.</p>
+    <p id="done-text">Volte ao app Só Refrigeração e entre com seu e-mail e a senha nova.</p>
   </section>
 
   <section class="card" id="other-card" hidden>
@@ -84,6 +87,7 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
 <script>
 (() => {
   const AUTH = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/auth/v1';
+  const REST = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/rest/v1';
   // Chave pública do projeto (a mesma do app); não é segredo.
   const KEY = 'sb_publishable_zmo7enM-5LJK470KTRD4Rw_6tdtseSS';
   const $ = id => document.getElementById(id);
@@ -92,6 +96,8 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
   // Tira o código da barra de endereço (histórico, captura de tela); ele fica só na memória.
   history.replaceState(null, '', location.pathname);
   let accessToken = null;
+  // Conta do app: 8 caracteres (regra do app). Conta do painel ACBOT: 12 (regra do painel).
+  let minLength = 8, panel = false;
 
   const show = id => { for (const card of ['form-card', 'done-card', 'invalid-card', 'other-card']) $(card).hidden = card !== id; };
   const fail = text => { const box = $('error'); box.textContent = text; box.hidden = false; };
@@ -129,7 +135,7 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
     event.preventDefault();
     $('error').hidden = true;
     const password = $('password').value;
-    if ([...password].length < 8) return fail('A senha precisa ter pelo menos 8 caracteres.');
+    if ([...password].length < minLength) return fail(panel ? 'A senha do painel precisa ter pelo menos 12 caracteres.' : 'A senha precisa ter pelo menos 8 caracteres.');
     if (new TextEncoder().encode(password).length > 72) return fail('A senha ficou longa demais. Use uma mais curta.');
     if (password !== $('confirm').value) return fail('As duas senhas não são iguais.');
     $('submit').disabled = true; $('submit').textContent = 'Salvando…';
@@ -143,14 +149,26 @@ button[type=submit]:disabled{opacity:.6;cursor:default}
           if (response.status === 429) return fail('Muitas tentativas. Espere alguns minutos e tente de novo.');
           return expired();
         }
-        // O cadastro do Supabase é dividido com o painel ACBOT: só conta criada pelo app troca a senha aqui.
+        // O cadastro do Supabase é dividido com o painel ACBOT. Conta do app troca aqui; conta de ADM do painel
+        // troca com aviso, 12 caracteres e código do autenticador; qualquer outra é recusada.
         if (data.user?.app_metadata?.application !== 'so_refrigeracao') {
-          call('/logout?scope=local', 'POST', {}, data.access_token).catch(() => {});
-          $('password').value = ''; $('confirm').value = '';
-          return show('other-card');
+          const admin = await fetch(REST + '/acbot_admins?select=user_id&user_id=eq.' + encodeURIComponent(data.user?.id || ''), {
+            headers: { apikey: KEY, Authorization: 'Bearer ' + data.access_token }, cache: 'no-store', signal: AbortSignal.timeout(20000),
+          }).then(r => r.ok ? r.json() : []).catch(() => []);
+          if (!Array.isArray(admin) || admin.length !== 1) {
+            call('/logout?scope=local', 'POST', {}, data.access_token).catch(() => {});
+            $('password').value = ''; $('confirm').value = '';
+            return show('other-card');
+          }
+          panel = true; minLength = 12;
+          $('panel-note').hidden = false;
+          $('length-hint').textContent = 'Use pelo menos 12 caracteres.';
+          $('done-text').textContent = 'Entre no painel ACBOT com seu e-mail, a senha nova e o código do autenticador.';
         }
         accessToken = data.access_token;
-        if (useFactors(data.user) && !/^[0-9]{6}$/.test($('mfa-code').value.trim())) {
+        const needsCode = useFactors(data.user) && !/^[0-9]{6}$/.test($('mfa-code').value.trim());
+        if (panel && [...password].length < 12) return fail('Esta é a conta do painel ACBOT: a senha precisa ter pelo menos 12 caracteres.' + (needsCode ? ' Depois digite o código do autenticador.' : ''));
+        if (needsCode) {
           $('mfa-code').focus();
           return fail('Falta o código de 6 dígitos do app autenticador.');
         }
