@@ -83,7 +83,7 @@
 }
 /* Menu do topo com 2 links no celular: espaco entre eles. */
 .nowrap{white-space:nowrap}
-@media(max-width:700px){.header nav{gap:14px}.header nav a{white-space:nowrap}.header nav a:last-child{display:none}.header nav a[href="#catalogo"]{display:flex}}
+
 
 /* Cupons de hoje: tiquetes com recorte, codigo grande e botao de copiar. */
 .coupons{margin-top:44px;padding-top:34px;border-top:1px solid #2c4955}
@@ -114,3 +114,17 @@
 @media(max-width:700px){.coupons{margin-top:32px;padding-top:26px}.coupons-head{display:block}.coupons-head h3{font-size:28px}.coupons-head p{font-size:11px;margin-top:8px}.coupons-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.coupon{padding:13px 12px 12px}.coupon-off{font-size:22px}.coupon-code{font-size:14px}.coupons-stores{grid-template-columns:1fr}.coupons-more{width:100%}}
 /* Botao da loja nos cards pequenos: uma linha so. */
 .deals-list .deal-cta{white-space:nowrap;font-size:clamp(10px,.95vw,12px);padding-inline:6px}
+/* Topo: marca em uma linha; no celular o menu mostra so "Cupons". */
+.brand>span{white-space:nowrap}.nav-short{display:none}
+@media(max-width:700px){.header nav a[href="#catalogo"],.header nav a[href="#como-funciona"]{display:none}.header nav a{white-space:nowrap}.nav-long{display:none}.nav-short{display:inline}}
+/* Animacao do topo: ar-condicionado soltando ar gelado. Uma so, discreta; parada para quem reduz movimento. */
+.hero-cold{width:124px;margin-bottom:18px}
+.hero-cold svg{width:100%;height:auto;display:block}
+.cold-air path{stroke-dasharray:14 10;animation:cold-air 1.6s linear infinite;opacity:.9}
+.cold-air path:nth-child(2){animation-delay:-.5s}.cold-air path:nth-child(3){animation-delay:-1s}
+.cold-flakes circle{animation:cold-flake 3.2s ease-in infinite;opacity:0}
+.cold-flakes circle:nth-child(2){animation-delay:-.6s}.cold-flakes circle:nth-child(3){animation-delay:-1.3s}.cold-flakes circle:nth-child(4){animation-delay:-2s}.cold-flakes circle:nth-child(5){animation-delay:-2.5s}.cold-flakes circle:nth-child(6){animation-delay:-1.8s}
+@keyframes cold-air{to{stroke-dashoffset:-24}}
+@keyframes cold-flake{0%{transform:translateY(-6px);opacity:0}20%{opacity:1}100%{transform:translateY(16px);opacity:0}}
+@media(max-width:700px){.hero-cold{width:104px;margin-bottom:14px}}
+@media(prefers-reduced-motion:reduce){.cold-air path{animation:none}.cold-flakes circle{animation:none;opacity:.8}}
