@@ -1,5 +1,60 @@
 (() => {
   'use strict';
+  // Cupons de hoje: Mercado Livre vem do arquivo publicado pelo listao (so do dia; some quando o dia vira).
+  // Shopee: botao para a pagina de cupons da Shopee.
+  const box = document.querySelector('#cupons');
+  if (!box) return;
+  const URL_CUPONS = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/refri-catalogue/cupons-do-dia.json';
+  const list = box.querySelector('.coupons-list'), more = box.querySelector('.coupons-more'), mlLink = box.querySelector('.coupon-ml-link'), shLink = box.querySelector('.coupon-shopee-link');
+  const money = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 });
+  const escape = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const host = (u, re) => { try { const x = new URL(u); return x.protocol === 'https:' && re.test(x.hostname) ? x.href : null; } catch { return null; } };
+  const hoje = () => new Date(Date.now() - 4 * 3600e3).toISOString().slice(0, 10);
+  const num = v => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
+  let todos = [], aberto = false, diaDados = '';
+  function render() {
+    if (diaDados !== hoje()) todos = [];
+    const visiveis = aberto ? todos : todos.slice(0, 8);
+    list.innerHTML = visiveis.map(c => {
+      const off = c.pct ? `${c.pct}% OFF` : `${money(c.fixo)} OFF`;
+      const regras = [c.min ? `Mínimo ${money(c.min)}` : '', c.max ? `Limite ${money(c.max)}` : ''].filter(Boolean).join(' · ');
+      return `<li class="coupon"><p class="coupon-off">${off}</p><p class="coupon-code">${escape(c.code)}</p><p class="coupon-rules">${regras || 'Sem mínimo informado'}</p><button type="button" class="coupon-copy" data-code="${escape(c.code)}">Copiar cupom</button></li>`;
+    }).join('');
+    more.hidden = aberto || todos.length <= 8;
+    more.textContent = `Ver todos os ${todos.length} cupons`;
+    box.classList.toggle('sem-ml', todos.length === 0);
+    box.querySelector('.coupons-empty').hidden = todos.length > 0;
+  }
+  async function load() {
+    try {
+      const r = await fetch(URL_CUPONS, { cache: 'no-cache', signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error('indisponivel');
+      const d = await r.json();
+      diaDados = typeof d?.dia === 'string' ? d.dia : '';
+      const ml = host(d?.link, /(^|\.)meli\.la$|(^|\.)mercadolivre\.com\.br$/); if (ml) mlLink.href = ml;
+      const sh = host(d?.shopeeLink, /(^|\.)shopee\.com\.br$/); if (sh) shLink.href = sh;
+      todos = (Array.isArray(d?.cupons) ? d.cupons : [])
+        .filter(c => c && /^[A-Z][A-Z0-9]{3,24}$/.test(c.code) && ((num(c.pct) && c.pct <= 90) || num(c.fixo)))
+        .map(c => ({ code: c.code, pct: num(c.pct), fixo: num(c.fixo), min: num(c.min), max: num(c.max) }))
+        .sort((a, b) => (b.pct || 0) - (a.pct || 0) || (b.max || 0) - (a.max || 0));
+    } catch { todos = []; }
+    render();
+  }
+  list.addEventListener('click', async event => {
+    const button = event.target.closest('.coupon-copy'); if (!button) return;
+    const code = button.dataset.code;
+    try { await navigator.clipboard.writeText(code); }
+    catch { const t = document.createElement('textarea'); t.value = code; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0'; document.body.append(t); t.select(); try { document.execCommand('copy'); } catch { /* sem copia */ } t.remove(); }
+    button.textContent = 'Copiado ✓'; button.classList.add('copiado');
+    setTimeout(() => { button.textContent = 'Copiar cupom'; button.classList.remove('copiado'); }, 2200);
+  });
+  more.addEventListener('click', () => { aberto = true; render(); });
+  load();
+  setInterval(() => { if (!document.hidden) load(); }, 5 * 60000);
+})();
+
+(() => {
+  'use strict';
   // "Descontos do dia": calcula, a partir do catalogo carregado (evento catalogue:updated),
   // os produtos com maior desconto e mostra um destaque + lista. Mercado Livre e Shopee.
   const section = document.querySelector('#descontos');
@@ -27,10 +82,9 @@
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     const candidates = pool.concat(ranked.slice(60));
     // Variedade: no maximo 2 por categoria e sem titulos quase iguais.
-    // Equilibrio entre lojas: no maximo 5 de cada uma. O destaque precisa custar pelo menos R$ 30.
+    // Equilibrio entre lojas: no maximo 5 de cada uma.
     const perCategory = new Map(), perStore = new Map(), seenTitles = new Set(), chosen = [];
-    const featured = candidates.slice(0, 20).filter(p => p.price >= 30).sort((a, b) => b.discount - a.discount)[0];
-    for (const p of featured ? [featured, ...candidates.filter(x => x !== featured)] : candidates) {
+    for (const p of candidates) {
       const key = String(p.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').slice(0, 5).join(' ');
       const store = isShopee(p) ? 'shopee' : 'ml';
       const used = perCategory.get(p.category) || 0, usedStore = perStore.get(store) || 0;
@@ -38,11 +92,8 @@
       seenTitles.add(key); perCategory.set(p.category, used + 1); perStore.set(store, usedStore + 1); chosen.push(p);
       if (chosen.length === LIST_SIZE + 1) break;
     }
-    // Alterna as lojas na lista (o destaque continua sendo o maior desconto).
-    const [head, ...others] = chosen;
-    const ml = others.filter(p => !isShopee(p)), sh = others.filter(isShopee), mixed = [];
-    while (ml.length || sh.length) { if (sh.length) mixed.push(sh.shift()); if (ml.length) mixed.push(ml.shift()); }
-    return head ? [head, ...mixed] : [];
+    // Do maior para o menor desconto (o destaque e o primeiro).
+    return chosen.sort((a, b) => b.discount - a.discount || b.price - a.price);
   }
 
   function storeButton(p, placement) {

@@ -84,3 +84,31 @@
 /* Menu do topo com 2 links no celular: espaco entre eles. */
 .nowrap{white-space:nowrap}
 @media(max-width:700px){.header nav{gap:14px}.header nav a{white-space:nowrap}.header nav a:last-child{display:none}.header nav a[href="#catalogo"]{display:flex}}
+
+/* Cupons de hoje: tiquetes com recorte, codigo grande e botao de copiar. */
+.coupons{margin-top:44px;padding-top:34px;border-top:1px solid #2c4955}
+.coupons-head{display:flex;align-items:flex-end;justify-content:space-between;gap:30px;margin-bottom:22px}
+.coupons-head h3{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:700;font-size:32px;line-height:1;letter-spacing:-.01em}
+.coupons-head p{font-size:12px;line-height:1.7;color:#b9cbd0;max-width:380px}
+.coupons-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.coupon{position:relative;background:#fffdf3;color:var(--ink);border-radius:10px;padding:16px 16px 14px;display:flex;flex-direction:column;gap:6px;border:1px dashed #d9c76a}
+.coupon::before,.coupon::after{content:'';position:absolute;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:var(--navy-soft)}
+.coupon::before{left:-9px}.coupon::after{right:-9px}
+.coupon-off{font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:800;font-size:26px;line-height:1;color:#e8461a}
+.coupon-code{font-size:17px;font-weight:700;letter-spacing:.06em;word-break:break-all}
+.coupon-rules{font-size:11px;color:#5d6f75;min-height:15px}
+.coupon-copy{margin-top:6px;min-height:40px;border:0;border-radius:7px;background:var(--navy);color:#fff;font-size:12px;font-weight:700}
+.coupon-copy:hover{background:#25414c}
+.coupon-copy.copiado{background:#1f8a4c}
+.coupons-more{margin-top:14px;min-height:42px;padding:10px 16px;border:1px solid #7fa3ad;border-radius:8px;background:transparent;color:#fff;font-size:12px;font-weight:600}
+.coupons-more[hidden],.coupons-empty[hidden]{display:none}
+.coupons-empty{font-size:13px;color:#c9d8dc;padding:14px 0}
+.coupons-stores{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.coupon-store{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none}
+.coupon-store--ml{background:#ffe600;color:#2d3277}
+.coupon-store--shopee{background:#ee4d2d;color:#fff}
+.coupon-store:hover{filter:brightness(.94)}
+.coupons.sem-ml .coupon-store--ml{display:none}
+.coupons.sem-ml .coupons-stores{grid-template-columns:1fr}
+@media(max-width:1000px){.coupons-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.coupons{margin-top:32px;padding-top:26px}.coupons-head{display:block}.coupons-head h3{font-size:28px}.coupons-head p{font-size:11px;margin-top:8px}.coupons-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.coupon{padding:13px 12px 12px}.coupon-off{font-size:22px}.coupon-code{font-size:14px}.coupons-stores{grid-template-columns:1fr}.coupons-more{width:100%}}
