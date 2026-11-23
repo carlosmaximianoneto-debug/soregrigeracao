@@ -18,7 +18,7 @@
     list.innerHTML = visiveis.map(c => {
       const off = c.pct ? `${c.pct}% OFF` : `${money(c.fixo)} OFF`;
       const regras = [c.min ? `Mínimo ${money(c.min)}` : '', c.max ? `Limite ${money(c.max)}` : ''].filter(Boolean).join(' · ');
-      return `<li class="coupon"><p class="coupon-off">${off}</p><p class="coupon-code">${escape(c.code)}</p><p class="coupon-rules">${regras || 'Sem mínimo informado'}</p><button type="button" class="coupon-copy" data-code="${escape(c.code)}">Copiar cupom</button></li>`;
+      return `<li class="coupon"><div class="coupon-info"><p class="coupon-top"><span class="coupon-off">${off}</span><span class="coupon-store-tag">Mercado Livre</span></p><p class="coupon-code">${escape(c.code)}</p><p class="coupon-rules">${regras || 'Sem mínimo informado'}</p></div><button type="button" class="coupon-copy" data-code="${escape(c.code)}" aria-label="Copiar cupom ${escape(c.code)}">Copiar</button></li>`;
     }).join('');
     more.hidden = aberto || todos.length <= 8;
     more.textContent = `Ver todos os ${todos.length} cupons`;
@@ -46,7 +46,7 @@
     try { await navigator.clipboard.writeText(code); }
     catch { const t = document.createElement('textarea'); t.value = code; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0'; document.body.append(t); t.select(); try { document.execCommand('copy'); } catch { /* sem copia */ } t.remove(); }
     button.textContent = 'Copiado ✓'; button.classList.add('copiado');
-    setTimeout(() => { button.textContent = 'Copiar cupom'; button.classList.remove('copiado'); }, 2200);
+    setTimeout(() => { button.textContent = 'Copiar'; button.classList.remove('copiado'); }, 2200);
   });
   more.addEventListener('click', () => { aberto = true; render(); });
   load();

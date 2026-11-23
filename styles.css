@@ -117,3 +117,23 @@
 /* Topo: marca em uma linha; no celular o menu mostra so "Cupons". */
 .brand>span{white-space:nowrap}.nav-short{display:none}
 @media(max-width:700px){.header nav a[href="#catalogo"],.header nav a[href="#como-funciona"]{display:none}.header nav a{white-space:nowrap}.nav-long{display:none}.nav-short{display:inline}}
+/* Cupons v2: etiqueta da loja, codigo sempre inteiro e botoes alinhados. */
+.coupon{justify-content:space-between}
+.coupon-info{display:flex;flex-direction:column;gap:6px;min-width:0}
+.coupon-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.coupon-store-tag{flex-shrink:0;font-size:10px;font-weight:700;color:#2d3277;background:#ffe600;border-radius:4px;padding:3px 6px;line-height:1.2}
+.coupon-code{font-size:clamp(13px,1.25vw,16px);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal}
+.coupon-copy{margin-top:auto}
+@media(max-width:700px){
+  .coupons-list{grid-template-columns:1fr;gap:10px}
+  .coupon{flex-direction:row;align-items:center;gap:12px;padding:12px 14px}
+  .coupon-info{flex:1}
+  .coupon-top{justify-content:flex-start}
+  .coupon-off{font-size:22px}
+  .coupon-code{font-size:15px}
+  .coupon-rules{min-height:0}
+  .coupon-copy{margin-top:0;flex-shrink:0;min-width:92px;min-height:44px}
+}
+/* Catalogo nivelado: titulo sempre com 3 linhas (reticencias quando passa), cards da mesma altura. */
+.products .product h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;line-height:1.5;min-height:4.5em;overflow-wrap:anywhere}
+.products .product .product-type{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
