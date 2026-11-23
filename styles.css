@@ -5,3 +5,79 @@
 @media(max-width:700px){.container{width:calc(100% - 40px)}.header-inner{height:78px}.brand{gap:10px}.brand>svg{width:32px;height:32px}.brand>span{font-size:23px}.brand small{font-size:6.5px}.header nav{font-size:11px;gap:0}.header nav a:last-child{display:none}body:has(.hero){background:var(--paper)}.hero{background:var(--navy);width:100%;padding:34px 20px 30px;display:block;min-height:0}.hero h1{font-size:clamp(40px,9.9vw,62px)}.hero-copy>p:not(.join-note){font-size:13px;line-height:1.75;margin-top:20px;max-width:450px}.hero-copy>p:not(.join-note) br{display:none}.hero-join{width:100%;margin-top:23px;min-height:56px;justify-content:space-between;padding-inline:19px;font-size:13px}.hero-join svg:last-child{margin-left:auto}.hero .join-note{text-align:center;font-size:10px;margin-top:11px}.catalogue-shortcut{display:block;text-align:center;margin-top:22px;font-size:10px}.catalogue-shortcut span{display:inline}.hero-visual{margin-top:29px}.product-stage{height:245px;padding:34px 20px 12px}.stage-label{font-size:8px;top:17px;left:20px}.stage-number{font-size:47px;right:18px;bottom:9px}.stage-number span{font-size:10px}.hero-visual figcaption{padding:17px 20px}.hero-visual figcaption strong{font-size:13px}.hero-visual figcaption span{font-size:10px;margin-top:5px}figcaption a{padding:10px}.scope-strip>div{min-height:54px;gap:7px;font-size:8px;letter-spacing:.04em}.scope-strip span[aria-hidden]{font-size:17px}.scope-strip span:nth-last-child(-n+2){display:none}.catalogue{padding-block:45px 40px}.section-heading{display:block;margin-bottom:26px}.section-heading h2{font-size:36px}.section-heading>p{font-size:11px;margin-top:15px}.search label{font-size:11px}.search input{font-size:12px;height:56px;padding-left:43px;padding-right:12px}.search-input svg{left:15px;top:18px;width:19px;height:19px}.search kbd{display:none}.filters{gap:7px;margin-top:13px}.filters button{font-size:10px;padding:9px 11px;min-height:36px}.results-meta{margin-top:26px;font-size:10px}.products{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px}.product-photo{height:160px;padding:17px}.product-info{padding:13px}.product-type{font-size:9px}.product h3{font-size:12px;line-height:1.5}.spec{font-size:9px;margin-top:7px;margin-bottom:16px}.product-link{font-size:9px;gap:3px}.product-link>span{font-size:16px}.catalogue-note{font-size:10px;margin-top:20px}.how{padding-block:40px}.how-layout,.questions{display:block}.how h2{font-size:33px;margin-bottom:30px}.how li{padding-left:37px;margin-bottom:21px;padding-bottom:21px}.how strong{font-size:13px}.how p{font-size:11px}.questions{padding-block:39px}.questions h2{font-size:31px;margin-bottom:15px}.questions summary{font-size:12px;min-height:63px}.questions details>p{font-size:11px;padding-right:12px}.final{display:block;padding:30px 24px}.final h2{font-size:31px}.final p{font-size:11px;margin-top:14px}.final .button{width:100%;font-size:11px;margin-top:24px;padding-inline:15px;gap:10px}.final .button svg:last-child{margin-left:auto}.footer{display:block;font-size:9px;padding-block:25px 110px}.footer p:last-child{text-align:left;margin-top:12px}.mobile-join{position:fixed;inset:auto 0 0;z-index:5;display:block;background:var(--navy);padding:10px 20px max(10px,env(safe-area-inset-bottom));border-top:1px solid #38535d;transition:transform .18s ease;transform:translateY(110%);visibility:hidden}.mobile-join.is-visible{transform:translateY(0);visibility:visible}.mobile-join .button{width:100%;min-height:50px;justify-content:space-between;font-size:12px}.mobile-join .button svg{width:19px;height:19px}.mobile-join .button svg:last-child{margin-left:auto}}
 @media(max-width:360px){.container{width:calc(100% - 32px)}.hero{padding-inline:16px}.brand>span{font-size:21px}.brand small{font-size:6px}.header nav{font-size:10px}.hero h1{font-size:39px}.product-photo{height:140px;padding:13px}.product-info{padding:11px}.section-heading h2{font-size:32px}.final{padding:28px 20px}.final h2{font-size:28px}.mobile-join{padding-inline:16px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important;animation:none!important}}
+
+/* Descontos do dia — faixa logo abaixo do topo. O numero do desconto e o destaque da pagina. */
+.deals{--flame:#ff6a2b;--flame-deep:#e8461a;--ml:#ffe600;--ml-ink:#2d3277;--shopee:#ee4d2d;background:var(--navy-soft);color:#f3f5f2;padding-block:54px 58px;border-top:1px solid #2c4955}
+.deals[hidden]{display:none}
+.deals-head{display:flex;align-items:flex-end;justify-content:space-between;gap:30px;margin-bottom:28px}
+.deals-head h2{display:flex;align-items:center;gap:12px;font-size:43px}
+.deals-head h2 .flame{width:38px;height:38px;color:var(--flame)}
+.deals-head p{font-size:12px;line-height:1.8;color:#b9cbd0;max-width:340px}
+.deals-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,2fr);gap:20px;align-items:stretch}
+.deal-top,.deal{background:var(--white);color:var(--ink);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+.deal-top{border:2px solid var(--flame)}
+.deal-photo{display:block;background:#fff;border-bottom:1px solid #edf0eb;height:150px;padding:16px}
+.deal-top .deal-photo{height:300px;padding:28px}
+.deal-photo img{width:100%;height:100%;object-fit:contain}
+.deal-photo.no-photo{background:#eef1ee}
+.deal-body{padding:14px 15px 16px;display:flex;flex-direction:column;flex:1;gap:8px}
+.deal-top .deal-body{padding:20px 22px 22px;gap:10px}
+.deal-off{display:flex;align-items:center;gap:6px;font-family:'Barlow Condensed','Arial Narrow',sans-serif;font-weight:800;font-size:16px;color:var(--flame-deep);line-height:1}
+.deal-off span{font-size:30px;letter-spacing:-.02em}
+.deal-off .flame{width:22px;height:22px;color:var(--flame)}
+.deal-top .deal-off span{font-size:64px}
+.deal-top .deal-off{font-size:26px}
+.deal-top .deal-off .flame{width:40px;height:40px}
+.deal h3,.deal-top h3{font-family:Inter,sans-serif;font-size:12px;line-height:1.5;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.deal-top h3{font-size:16px;-webkit-line-clamp:3}
+.deal-price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:auto}
+.deal-price strong{font-size:16px}
+.deal-top .deal-price strong{font-size:24px}
+.deal-price s{font-size:11px;color:#6b7d83}
+.deal-cta{display:flex;align-items:center;justify-content:center;min-height:40px;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;transition:filter .15s ease}
+.deal-top .deal-cta{min-height:52px;font-size:14px}
+.deal-cta:hover{filter:brightness(.94)}
+.deal-cta--ml{background:var(--ml);color:var(--ml-ink)}
+.deal-cta--shopee{background:var(--shopee);color:#fff}
+.deals-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.deals-foot{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-top:26px}
+.deals-all{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:12px 18px;border:1px solid #7fa3ad;border-radius:8px;color:#fff;text-decoration:none;font-size:13px;font-weight:600}
+.deals-all:hover{background:#21404c;border-color:var(--ice)}
+.deals-all svg{width:18px;height:18px}
+.deals-updated{font-size:11px;color:#9fb6bc;line-height:1.6}
+
+/* Cards do catalogo: Mercado Livre continua amarelo (mobile-refinements.css); Shopee em laranja. */
+.product .product-link.product-link--shopee{background:#ee4d2d;color:#fff}
+.product .product-link.product-link--shopee:hover{background:#d73211}
+.product .product-link.product-link--shopee:active{background:#c22d0d}
+/* Desconto no card ganha o foguinho. */
+.product .catalogue-price .catalogue-discount{display:inline-flex;align-items:center;gap:4px;background:#fff0e8;color:#c23c12}
+.product .catalogue-price .catalogue-discount::before{content:'';width:12px;height:12px;background:#ff6a2b;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12.6 1.8c.4 3-1 4.9-2.5 6.6-1.4 1.6-2.9 3.2-2.9 5.7 0 4.6 3.2 8.1 5.1 8.1 3.9 0 7.4-3.3 7.4-7.4 0-4.4-3.3-8-7.1-13Z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12.6 1.8c.4 3-1 4.9-2.5 6.6-1.4 1.6-2.9 3.2-2.9 5.7 0 4.6 3.2 8.1 5.1 8.1 3.9 0 7.4-3.3 7.4-7.4 0-4.4-3.3-8-7.1-13Z'/%3E%3C/svg%3E") center/contain no-repeat}
+.filters button[data-filter="__desconto"]{border-color:#f3a27f;color:#c23c12}
+.filters button[data-filter="__desconto"][aria-pressed=true]{background:#e8461a;border-color:#e8461a;color:#fff}
+
+@media(max-width:1000px){
+  .deals-layout{grid-template-columns:1fr}
+  .deal-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)}
+  .deal-top .deal-photo{height:auto;min-height:260px;border-bottom:0;border-right:1px solid #edf0eb}
+  .deals-list{grid-template-columns:repeat(4,minmax(200px,1fr));overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px}
+  .deal{scroll-snap-align:start}
+  .deals-head h2{font-size:36px}
+}
+@media(max-width:700px){
+  .deals{padding-block:36px 38px}
+  .deals-head{display:block;margin-bottom:20px}
+  .deals-head h2{font-size:34px}
+  .deals-head h2 .flame{width:30px;height:30px}
+  .deals-head p{font-size:11px;margin-top:10px}
+  .deal-top{display:flex}
+  .deal-top .deal-photo{height:220px;min-height:0;border-right:0;border-bottom:1px solid #edf0eb;padding:18px}
+  .deal-top .deal-off span{font-size:52px}
+  .deal-top h3{font-size:14px}
+  .deals-list{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(168px,46%);margin-inline:-20px;padding-inline:20px;scroll-padding-inline:20px}
+  .deal-photo{height:130px;padding:12px}
+  .deal-off span{font-size:26px}
+  .deals-foot{display:block}
+  .deals-all{width:100%;justify-content:center}
+  .deals-updated{margin-top:12px;font-size:10px}
+}

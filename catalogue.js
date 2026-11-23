@@ -1,5 +1,87 @@
 (() => {
   'use strict';
+  // "Descontos do dia": calcula, a partir do catalogo carregado (evento catalogue:updated),
+  // os produtos com maior desconto e mostra um destaque + lista. Mercado Livre e Shopee.
+  const section = document.querySelector('#descontos');
+  if (!section) return;
+  const top = section.querySelector('.deal-top');
+  const list = section.querySelector('.deals-list');
+  const updated = section.querySelector('.deals-updated');
+  const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const escape = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const imageUrl = (url, width) => (window.catalogueImageUrl || (u => u))(url, width);
+  const MIN_DISCOUNT = 15, LIST_SIZE = 8, PER_CATEGORY = 2;
+  const isShopee = p => p.store === 'shopee' || /(^|\.)shopee\.com\.br$/.test((() => { try { return new URL(p.url).hostname; } catch { return ''; } })());
+  const flame = '<svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.6 1.8c.4 3-1 4.9-2.5 6.6-1.4 1.6-2.9 3.2-2.9 5.7 0 1.3.5 2.4 1.3 3.2-.2-2 1-3.3 2.2-4.5 1-1 2-2 2.3-3.6 1.9 1.6 3.4 4 3.4 6.4 0 1-.3 1.9-.8 2.6 1.9-1 3.2-3 3.2-5.4 0-4.4-3.3-8-6.2-11Z"/><path fill="currentColor" opacity=".55" d="M12.3 22.2c-2.4 0-4.4-1.8-4.4-4.2 0-2 1.3-3.2 2.4-4.3.9-.9 1.6-1.6 1.9-2.8 1.6 1.4 3.4 3.4 3.4 5.9 0 3-1.5 5.4-3.3 5.4Z"/></svg>';
+
+  function pick(products) {
+    const candidates = products
+      .filter(p => p && p.price > 0 && Number.isInteger(p.discount) && p.discount >= MIN_DISCOUNT && p.discount < 100 && p.url && p.image)
+      .sort((a, b) => b.discount - a.discount || b.price - a.price);
+    // Variedade: no maximo 2 por categoria e sem titulos quase iguais.
+    // Equilibrio entre lojas: no maximo 5 de cada uma. O destaque precisa custar pelo menos R$ 30.
+    const perCategory = new Map(), perStore = new Map(), seenTitles = new Set(), chosen = [];
+    const featured = candidates.find(p => p.price >= 30);
+    for (const p of featured ? [featured, ...candidates.filter(x => x !== featured)] : candidates) {
+      const key = String(p.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').slice(0, 5).join(' ');
+      const store = isShopee(p) ? 'shopee' : 'ml';
+      const used = perCategory.get(p.category) || 0, usedStore = perStore.get(store) || 0;
+      if (seenTitles.has(key) || used >= PER_CATEGORY || usedStore >= 5) continue;
+      seenTitles.add(key); perCategory.set(p.category, used + 1); perStore.set(store, usedStore + 1); chosen.push(p);
+      if (chosen.length === LIST_SIZE + 1) break;
+    }
+    // Alterna as lojas na lista (o destaque continua sendo o maior desconto).
+    const [head, ...others] = chosen;
+    const ml = others.filter(p => !isShopee(p)), sh = others.filter(isShopee), mixed = [];
+    while (ml.length || sh.length) { if (sh.length) mixed.push(sh.shift()); if (ml.length) mixed.push(ml.shift()); }
+    return head ? [head, ...mixed] : [];
+  }
+
+  function storeButton(p, placement) {
+    const shopee = isShopee(p);
+    return `<a class="deal-cta${shopee ? ' deal-cta--shopee' : ' deal-cta--ml'}" href="${escape(p.url)}" target="_blank" rel="sponsored noopener noreferrer" data-track-event="affiliate_click" data-product-id="${escape(p.id)}" data-placement="${placement}" data-page-type="home">${shopee ? 'Ver na Shopee' : 'Ver no Mercado Livre'}</a>`;
+  }
+  function oldPrice(p) {
+    const before = p.price / (1 - p.discount / 100);
+    return Number.isFinite(before) && before > p.price ? `<s aria-label="Preço anterior estimado">${money.format(Math.round(before * 100) / 100)}</s>` : '';
+  }
+  function card(p, featured) {
+    const placement = featured ? 'home_deal_top' : 'home_deal_list';
+    const img = imageUrl(p.image, featured ? 640 : 240);
+    const title = p.title.length > 90 ? p.title.slice(0, 87).replace(/\s+\S*$/, '') + '…' : p.title;
+    return `<a class="deal-photo" href="${escape(p.url)}" target="_blank" rel="sponsored noopener noreferrer" tabindex="-1" aria-hidden="true" data-track-event="affiliate_click" data-product-id="${escape(p.id)}" data-placement="${placement}" data-page-type="home"><img src="${escape(img)}" alt="" width="${featured ? 640 : 240}" height="${featured ? 640 : 240}" loading="eager" decoding="async"></a>
+      <div class="deal-body">
+        <p class="deal-off">${flame}<span>${p.discount}%</span> OFF</p>
+        <h3 title="${escape(p.title)}">${escape(title)}</h3>
+        <p class="deal-price"><strong>${money.format(p.price)}</strong>${oldPrice(p)}</p>
+        ${storeButton(p, placement)}
+      </div>`;
+  }
+
+  function render(products) {
+    const deals = pick(Array.isArray(products) ? products : []);
+    if (deals.length < 3) { section.hidden = true; return; }
+    const [first, ...rest] = deals;
+    top.innerHTML = card(first, true);
+    top.classList.toggle('is-shopee', isShopee(first));
+    list.innerHTML = rest.map(p => `<li class="deal">${card(p, false)}</li>`).join('');
+    section.querySelectorAll('img').forEach(img => img.addEventListener('error', () => { img.closest('.deal-photo')?.classList.add('no-photo'); img.remove(); }, { once: true }));
+    updated.textContent = `Calculado agora com ${products.length.toLocaleString('pt-BR')} produtos do catálogo. Confira o preço no anúncio.`;
+    section.hidden = false;
+  }
+
+  document.addEventListener('catalogue:updated', event => render(event.detail?.products));
+  if (Array.isArray(window.REFRI_CURRENT_CATALOGUE) && window.REFRI_CURRENT_CATALOGUE.length) render(window.REFRI_CURRENT_CATALOGUE);
+
+  // "Ver todos com desconto": abre o catalogo ja filtrado.
+  section.querySelector('[data-deals-all]')?.addEventListener('click', event => {
+    const button = document.querySelector('.filters button[data-filter="__desconto"]');
+    if (button) { event.preventDefault(); button.click(); document.querySelector('#catalogo')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); button.focus({ preventScroll: true }); }
+  });
+})();
+
+(() => {
+  'use strict';
   const input = document.querySelector('#search');
   const select = document.querySelector('#category'), pills = document.querySelector('.filters');
   const grid = document.querySelector('#products'), count = document.querySelector('#result-count');
@@ -34,7 +116,7 @@
   }
   function publishCatalogue(rows){window.REFRI_CURRENT_CATALOGUE=rows;document.dispatchEvent(new CustomEvent('catalogue:updated',{detail:{products:rows}}));}
   const escape = text => String(text ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const safeUrl = (value,image=false) => {try {const u=new URL(value);return u.protocol==='https:'&&(image ? /(^|\.)(supabase\.co|mlstatic\.com)$/.test(u.hostname):/(^|\.)(meli\.la|mercadolivre\.com\.br|mercadolibre\.com)$/.test(u.hostname))?u.href:null;}catch{return null;}};
+  const safeUrl = (value,image=false) => {try {const u=new URL(value);return u.protocol==='https:'&&(image ? /(^|\.)(supabase\.co|mlstatic\.com)$/.test(u.hostname):/(^|\.)(meli\.la|mercadolivre\.com\.br|mercadolibre\.com|s\.shopee\.com\.br)$/.test(u.hostname))?u.href:null;}catch{return null;}};
   let products=[], filtered=[], category='all', shown=24, debounce;
   let renderedMarkup = null, renderedCategories = null;
   const more=document.createElement('button');more.type='button';more.className='load-more';more.hidden=true;more.textContent='Mostrar mais produtos';grid.after(more);
@@ -45,7 +127,8 @@
       const image=imageUrl(product.image,400);
       const responsive=image!==product.image?` srcset="${[240,400,640].map(width=>`${escape(imageUrl(product.image,width))} ${width}w`).join(', ')}" sizes="(max-width: 600px) calc((100vw - 48px) / 2), (max-width: 900px) 30vw, 280px" data-original="${escape(product.image)}"`:'';
       const discountBadge=product.discount?`<span class="catalogue-discount" title="Confirme o desconto no anúncio.">${product.discount}% OFF</span>`:'';
-      return `<article class="product"><a class="product-photo" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer" aria-label="Ver ${escape(product.title)} no Mercado Livre"><img src="${escape(image)}"${responsive} alt="${escape(product.title)}" width="400" height="400" loading="lazy" decoding="async"></a><div class="product-info"><p class="product-type">${escape(product.category)}</p><h3 title="${escape(product.title)}">${escape(title)}</h3><p class="catalogue-price">${product.price>0?money.format(product.price):'Consulte o preço'}${product.price>0?discountBadge:'<span>No anúncio</span>'}</p><a class="product-link" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer"><span class="cta-long">Ver no Mercado Livre</span><span class="cta-short">Ver oferta</span> <span aria-hidden="true">↗</span></a></div></article>`;
+      const shopee=product.store==='shopee'||/(^|\.)shopee\.com\.br$/.test((()=>{try{return new URL(product.url).hostname}catch{return''}})());
+      return `<article class="product${shopee?' product--shopee':''}"><a class="product-photo" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer" aria-label="Ver ${escape(product.title)} ${shopee?'na Shopee':'no Mercado Livre'}"><img src="${escape(image)}"${responsive} alt="${escape(product.title)}" width="400" height="400" loading="lazy" decoding="async"></a><div class="product-info"><p class="product-type">${escape(product.category)}</p><h3 title="${escape(product.title)}">${escape(title)}</h3><p class="catalogue-price">${product.price>0?money.format(product.price):'Consulte o preço'}${product.price>0?discountBadge:'<span>No anúncio</span>'}</p><a class="product-link${shopee?' product-link--shopee':''}" href="${escape(product.url)}" data-track-event="affiliate_click" data-product-id="${escape(product.id)}" data-placement="home_card" data-page-type="home" target="_blank" rel="sponsored noopener noreferrer"><span class="cta-long">${shopee?'Ver na Shopee':'Ver no Mercado Livre'}</span><span class="cta-short">Ver oferta</span> <span aria-hidden="true">↗</span></a></div></article>`;
     }).join('');
     // Keep the actual image/card nodes when only the unfinished query or feed timestamp changes.
     if(markup!==renderedMarkup){
@@ -78,7 +161,7 @@
         return matches&&(word!=='mangueira'||(product.searchWords[titleIndex-1]==='sem')===(words[queryIndex-1]==='sem'));
       });
     }
-    filtered=products.filter(p=>(category==='all'||p.category===category)&&words.slice(0,last).every((word,index)=>matchIndex(p,index)>=0));
+    filtered=products.filter(p=>(category==='all'||(category==='__desconto'?p.discount>0:p.category===category))&&words.slice(0,last).every((word,index)=>matchIndex(p,index)>=0));
     if(words.length){
       // Prefer whole words within the current filters; otherwise complete the word being typed.
       const partial=tokens[last].length>=2&&!filtered.some(p=>matchIndex(p,last)>=0);
@@ -86,6 +169,8 @@
       // Keep genuine kits/accessories; titles naming the searched item first appear first.
       filtered.sort((a,b)=>matchIndex(a,0,partial&&last===0)-matchIndex(b,0,partial&&last===0));
     }
+    // "Com desconto": maiores descontos primeiro quando nao ha busca.
+    if(category==='__desconto'&&!words.length)filtered.sort((a,b)=>(b.discount||0)-(a.discount||0));
     if(resetPagination)shown=24;render();
   }
   function forgetCache(){try{window.localStorage.removeItem(cacheKey);}catch{/* Storage may be blocked or unavailable. */}}
@@ -121,12 +206,12 @@
       });
     }
     const categories=[...new Set(firstPage?data.categories:products.map(p=>p.category))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    if(category!=='all'&&!categories.includes(category))category='all';
+    if(category!=='all'&&category!=='__desconto'&&!categories.includes(category))category='all';
     const categoryKey=JSON.stringify(categories);
     if(categoryKey!==renderedCategories){
-      select.innerHTML='<option value="all">Todas as categorias</option>'+categories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('');
+      select.innerHTML='<option value="all">Todas as categorias</option><option value="__desconto">Com desconto</option>'+categories.map(c=>`<option value="${escape(c)}">${escape(c)}</option>`).join('');
       const quick=['Bombas de vácuo','Bombas de limpeza','Serras-copo','Manifolds e manômetros','Multímetros e alicates amperímetros'].filter(c=>categories.includes(c));
-      pills.innerHTML='<button type="button" data-filter="all" aria-pressed="true">Todos</button>'+quick.map(c=>`<button type="button" data-filter="${escape(c)}" aria-pressed="false">${escape(c)}</button>`).join('');
+      pills.innerHTML='<button type="button" data-filter="all" aria-pressed="true">Todos</button><button type="button" data-filter="__desconto" aria-pressed="false">Com desconto</button>'+quick.map(c=>`<button type="button" data-filter="${escape(c)}" aria-pressed="false">${escape(c)}</button>`).join('');
       renderedCategories=categoryKey;
     }
     const date=new Date(data.generatedAt);note.textContent=`Base consultada em ${Number.isNaN(date.getTime())?'data não informada':date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}. Isso não indica atualização dos preços e descontos. Confira o valor e a disponibilidade no anúncio.`;
@@ -152,7 +237,7 @@
   }
   function rememberSnapshot(){
     if(settings.preview)return;
-    const rows=products.map(({id,title,image,url,price,discount,category})=>({id,title,image,url,price,discount,category}));
+    const rows=products.map(({id,title,image,url,price,discount,category,store})=>({id,title,image,url,price,discount,category,store}));
     try{window.localStorage.setItem(cacheKey,JSON.stringify({receivedAt:Date.now(),data:{generatedAt:new Date(snapshotTime).toISOString(),products:rows}}));}catch{/* Live results work even without storage. */}
   }
   async function readResponse(request){
@@ -212,4 +297,3 @@
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
   }
 })();
-
