@@ -137,3 +137,11 @@
 /* Catalogo nivelado: titulo sempre com 3 linhas (reticencias quando passa), cards da mesma altura. */
 .products .product h3{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden;line-height:1.5;min-height:4.5em;overflow-wrap:anywhere}
 .products .product .product-type{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Votos dos cupons */
+.coupon-votes{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:#5d6f75}
+.coupon-votes span{margin-right:2px}
+.vote{display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:3px 9px;border:1px solid #d6d2b8;border-radius:999px;background:#fff;color:var(--ink);font-size:12px}
+.vote b{font-weight:700}
+.vote:hover{border-color:#8aa3aa}
+.vote[aria-pressed=true][data-voto="1"]{background:#e3f6ea;border-color:#1f8a4c;color:#145c33}
+.vote[aria-pressed=true][data-voto="-1"]{background:#fdeae4;border-color:#c23c12;color:#8f2a0b}

@@ -5,6 +5,14 @@
   const box = document.querySelector('#cupons');
   if (!box) return;
   const URL_CUPONS = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/storage/v1/object/public/refri-catalogue/cupons-do-dia.json';
+  const URL_VOTOS = 'https://xlwiwxaghbkdwbtwagwo.supabase.co/functions/v1/cupom-voto';
+  let votos = {};
+  const chaveVoto = code => `cupom-voto:${hoje()}:${code}`;
+  const meuVoto = code => { try { return Number(localStorage.getItem(chaveVoto(code))) || 0; } catch { return 0; } };
+  const guardarVoto = (code, v) => { try { localStorage.setItem(chaveVoto(code), String(v)); } catch { /* sem armazenamento */ } };
+  const placar = code => votos[code] || { up: 0, down: 0 };
+  // Cupom com 3+ "nao funcionou" e mais negativos que positivos sai da lista.
+  const derrubado = c => { const p = placar(c.code); return p.down >= 3 && p.down > p.up; };
   const list = box.querySelector('.coupons-list'), more = box.querySelector('.coupons-more'), mlLink = box.querySelector('.coupon-ml-link'), shLink = box.querySelector('.coupon-shopee-link');
   const money = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 2 });
   const escape = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -12,18 +20,29 @@
   const hoje = () => new Date(Date.now() - 4 * 3600e3).toISOString().slice(0, 10);
   const num = v => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null);
   let todos = [], aberto = false, diaDados = '';
+  function votosHtml(code) {
+    const p = placar(code), mv = meuVoto(code);
+    return `<div class="coupon-votes" role="group" aria-label="Este cupom funcionou?"><span>Funcionou?</span>`
+      + `<button type="button" class="vote" data-code="${escape(code)}" data-voto="1" aria-pressed="${mv === 1}" aria-label="Sim, funcionou (${p.up})">👍 <b>${p.up}</b></button>`
+      + `<button type="button" class="vote" data-code="${escape(code)}" data-voto="-1" aria-pressed="${mv === -1}" aria-label="Não funcionou (${p.down})">👎 <b>${p.down}</b></button></div>`;
+  }
+  async function carregarVotos() {
+    try { const r = await fetch(URL_VOTOS, { cache: 'no-store', signal: AbortSignal.timeout(8000) }); const d = await r.json(); if (d?.dia === hoje() && d.votos && typeof d.votos === 'object') votos = d.votos; } catch { /* sem votos: segue sem placar */ }
+  }
   function render() {
     if (diaDados !== hoje()) todos = [];
-    const visiveis = aberto ? todos : todos.slice(0, 8);
+    const ativos = todos.filter(c => !derrubado(c))
+      .sort((a, b) => (placar(b.code).up - placar(b.code).down) - (placar(a.code).up - placar(a.code).down) || (b.pct || 0) - (a.pct || 0) || (b.max || 0) - (a.max || 0));
+    const visiveis = aberto ? ativos : ativos.slice(0, 8);
     list.innerHTML = visiveis.map(c => {
       const off = c.pct ? `${c.pct}% OFF` : `${money(c.fixo)} OFF`;
       const regras = [c.min ? `Mínimo ${money(c.min)}` : '', c.max ? `Limite ${money(c.max)}` : ''].filter(Boolean).join(' · ');
-      return `<li class="coupon"><div class="coupon-info"><p class="coupon-top"><span class="coupon-off">${off}</span><span class="coupon-store-tag">Mercado Livre</span></p><p class="coupon-code">${escape(c.code)}</p><p class="coupon-rules">${regras || 'Sem mínimo informado'}</p></div><button type="button" class="coupon-copy" data-code="${escape(c.code)}" aria-label="Copiar cupom ${escape(c.code)}">Copiar</button></li>`;
+      return `<li class="coupon"><div class="coupon-info"><p class="coupon-top"><span class="coupon-off">${off}</span><span class="coupon-store-tag">Mercado Livre</span></p><p class="coupon-code">${escape(c.code)}</p><p class="coupon-rules">${regras || 'Sem mínimo informado'}</p>${votosHtml(c.code)}</div><button type="button" class="coupon-copy" data-code="${escape(c.code)}" aria-label="Copiar cupom ${escape(c.code)}">Copiar</button></li>`;
     }).join('');
-    more.hidden = aberto || todos.length <= 8;
-    more.textContent = `Ver todos os ${todos.length} cupons`;
-    box.classList.toggle('sem-ml', todos.length === 0);
-    box.querySelector('.coupons-empty').hidden = todos.length > 0;
+    more.hidden = aberto || ativos.length <= 8;
+    more.textContent = `Ver todos os ${ativos.length} cupons`;
+    box.classList.toggle('sem-ml', ativos.length === 0);
+    box.querySelector('.coupons-empty').hidden = ativos.length > 0;
   }
   async function load() {
     try {
@@ -38,9 +57,25 @@
         .map(c => ({ code: c.code, pct: num(c.pct), fixo: num(c.fixo), min: num(c.min), max: num(c.max) }))
         .sort((a, b) => (b.pct || 0) - (a.pct || 0) || (b.max || 0) - (a.max || 0));
     } catch { todos = []; }
+    await carregarVotos();
     render();
   }
   list.addEventListener('click', async event => {
+    const vote = event.target.closest('.vote');
+    if (vote) {
+      const code = vote.dataset.code, v = Number(vote.dataset.voto), antes = meuVoto(code);
+      if (antes === v) return;
+      const p = { ...placar(code) };
+      if (antes === 1) p.up--; if (antes === -1) p.down--;
+      if (v === 1) p.up++; else p.down++;
+      votos[code] = p; guardarVoto(code, v); render();
+      try {
+        const r = await fetch(URL_VOTOS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, voto: v }), signal: AbortSignal.timeout(8000) });
+        const d = await r.json().catch(() => null);
+        if (r.ok && d?.votos) { votos[code] = d.votos; render(); }
+      } catch { /* o voto fica marcado aqui; o placar volta a sincronizar no proximo carregamento */ }
+      return;
+    }
     const button = event.target.closest('.coupon-copy'); if (!button) return;
     const code = button.dataset.code;
     try { await navigator.clipboard.writeText(code); }
