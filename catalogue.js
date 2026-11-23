@@ -15,13 +15,21 @@
   const flame = '<svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.6 1.8c.4 3-1 4.9-2.5 6.6-1.4 1.6-2.9 3.2-2.9 5.7 0 1.3.5 2.4 1.3 3.2-.2-2 1-3.3 2.2-4.5 1-1 2-2 2.3-3.6 1.9 1.6 3.4 4 3.4 6.4 0 1-.3 1.9-.8 2.6 1.9-1 3.2-3 3.2-5.4 0-4.4-3.3-8-6.2-11Z"/><path fill="currentColor" opacity=".55" d="M12.3 22.2c-2.4 0-4.4-1.8-4.4-4.2 0-2 1.3-3.2 2.4-4.3.9-.9 1.6-1.6 1.9-2.8 1.6 1.4 3.4 3.4 3.4 5.9 0 3-1.5 5.4-3.3 5.4Z"/></svg>';
 
   function pick(products) {
-    const candidates = products
+    // Muda todo dia: sorteio com semente na data (fuso de Cuiaba) entre os 60 maiores descontos.
+    // No mesmo dia todo visitante ve a mesma selecao; no dia seguinte, outra.
+    const dia = new Date(Date.now() - 4 * 3600e3).toISOString().slice(0, 10);
+    let seed = 0; for (const ch of dia) seed = Math.imul(seed ^ ch.charCodeAt(0), 2654435761) >>> 0;
+    const random = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const ranked = products
       .filter(p => p && p.price > 0 && Number.isInteger(p.discount) && p.discount >= MIN_DISCOUNT && p.discount < 100 && p.url && p.image)
       .sort((a, b) => b.discount - a.discount || b.price - a.price);
+    const pool = ranked.slice(0, 60);
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const candidates = pool.concat(ranked.slice(60));
     // Variedade: no maximo 2 por categoria e sem titulos quase iguais.
     // Equilibrio entre lojas: no maximo 5 de cada uma. O destaque precisa custar pelo menos R$ 30.
     const perCategory = new Map(), perStore = new Map(), seenTitles = new Set(), chosen = [];
-    const featured = candidates.find(p => p.price >= 30);
+    const featured = candidates.slice(0, 20).filter(p => p.price >= 30).sort((a, b) => b.discount - a.discount)[0];
     for (const p of featured ? [featured, ...candidates.filter(x => x !== featured)] : candidates) {
       const key = String(p.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').slice(0, 5).join(' ');
       const store = isShopee(p) ? 'shopee' : 'ml';

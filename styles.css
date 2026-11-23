@@ -81,3 +81,6 @@
   .deals-all{width:100%;justify-content:center}
   .deals-updated{margin-top:12px;font-size:10px}
 }
+/* Menu do topo com 2 links no celular: espaco entre eles. */
+.nowrap{white-space:nowrap}
+@media(max-width:700px){.header nav{gap:14px}.header nav a{white-space:nowrap}.header nav a:last-child{display:none}.header nav a[href="#catalogo"]{display:flex}}
