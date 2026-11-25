@@ -100,6 +100,7 @@
   const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
   const escape = text => String(text ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const imageUrl = (url, width) => (window.catalogueImageUrl || (u => u))(url, width);
+  const safeImage = value => { try { const u = new URL(value); return u.protocol === 'https:' && /(^|\.)(supabase\.co|mlstatic\.com)$/.test(u.hostname); } catch { return false; } };
   const MIN_DISCOUNT = 15, LIST_SIZE = 8, PER_CATEGORY = 2;
   const isShopee = p => p.store === 'shopee' || /(^|\.)shopee\.com\.br$/.test((() => { try { return new URL(p.url).hostname; } catch { return ''; } })());
   const flame = '<svg class="flame" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12.6 1.8c.4 3-1 4.9-2.5 6.6-1.4 1.6-2.9 3.2-2.9 5.7 0 1.3.5 2.4 1.3 3.2-.2-2 1-3.3 2.2-4.5 1-1 2-2 2.3-3.6 1.9 1.6 3.4 4 3.4 6.4 0 1-.3 1.9-.8 2.6 1.9-1 3.2-3 3.2-5.4 0-4.4-3.3-8-6.2-11Z"/><path fill="currentColor" opacity=".55" d="M12.3 22.2c-2.4 0-4.4-1.8-4.4-4.2 0-2 1.3-3.2 2.4-4.3.9-.9 1.6-1.6 1.9-2.8 1.6 1.4 3.4 3.4 3.4 5.9 0 3-1.5 5.4-3.3 5.4Z"/></svg>';
@@ -143,7 +144,7 @@
     const placement = featured ? 'home_deal_top' : 'home_deal_list';
     const img = imageUrl(p.image, featured ? 640 : 240);
     const title = p.title.length > 90 ? p.title.slice(0, 87).replace(/\s+\S*$/, '') + '…' : p.title;
-    return `<a class="deal-photo" href="${escape(p.url)}" target="_blank" rel="sponsored noopener noreferrer" tabindex="-1" aria-hidden="true" data-track-event="affiliate_click" data-product-id="${escape(p.id)}" data-placement="${placement}" data-page-type="home"><img src="${escape(img)}" alt="" width="${featured ? 640 : 240}" height="${featured ? 640 : 240}" loading="eager" decoding="async"></a>
+    return `<a class="deal-photo" href="${escape(p.url)}" target="_blank" rel="sponsored noopener noreferrer" tabindex="-1" aria-hidden="true" data-track-event="affiliate_click" data-product-id="${escape(p.id)}" data-placement="${placement}" data-page-type="home"><img src="${escape(img)}" data-original="${escape(p.image)}" alt="" width="${featured ? 640 : 240}" height="${featured ? 640 : 240}" loading="${featured ? 'eager' : 'lazy'}" decoding="async"></a>
       <div class="deal-body">
         <p class="deal-off">${flame}<span>${p.discount}%</span> OFF</p>
         <h3 title="${escape(p.title)}">${escape(title)}</h3>
@@ -159,7 +160,8 @@
     top.innerHTML = card(first, true);
     top.classList.toggle('is-shopee', isShopee(first));
     list.innerHTML = rest.map(p => `<li class="deal">${card(p, false)}</li>`).join('');
-    section.querySelectorAll('img').forEach(img => img.addEventListener('error', () => { img.closest('.deal-photo')?.classList.add('no-photo'); img.remove(); }, { once: true }));
+    // Servico de miniaturas ocupado (429) ou falha: tenta a foto original uma vez antes de desistir.
+    section.querySelectorAll('img').forEach(img => { let retried = false; img.addEventListener('error', () => { const original = img.dataset.original; if (!retried && original && original !== img.getAttribute('src') && safeImage(original)) { retried = true; img.src = original; return; } img.closest('.deal-photo')?.classList.add('no-photo'); img.remove(); }); });
     updated.textContent = `Calculado agora com ${products.length.toLocaleString('pt-BR')} produtos do catálogo. Confira o preço no anúncio.`;
     section.hidden = false;
   }
